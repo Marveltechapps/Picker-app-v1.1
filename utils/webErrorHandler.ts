@@ -54,7 +54,24 @@ export function setupWebErrorSuppression() {
     ) {
       return true;
     }
-    
+
+    // Suppress errors from browser extensions (not from this app)
+    // - CSS Peeper: csspeeper-inspector-tools, "Ad unit initialization failed", payload TypeError
+    // - Give Freely: giveFreely.tsx – "Cannot read properties of undefined (reading 'payload')" (unhandled promise)
+    if (
+      errorStr.includes('csspeeper-inspector-tools') ||
+      errorStr.includes('csspeeper') ||
+      errorStr.includes('giveFreely') ||
+      errorStr.includes('Ad unit initialization failed') ||
+      errorStr.includes('inspector-tools')
+    ) {
+      return true;
+    }
+    // Extension "payload" TypeError often appears without script name in message; app's .payload usage is guarded
+    if (errorStr.includes("reading 'payload'")) {
+      return true;
+    }
+
     return false;
   };
 
@@ -112,16 +129,20 @@ export function setupWebErrorSuppression() {
     return false;
   };
 
-  // Suppress unhandled promise rejections for blob URLs
+  // Suppress unhandled promise rejections for blob URLs and browser-extension errors
   const originalUnhandledRejection = window.onunhandledrejection;
   window.onunhandledrejection = (event) => {
-    const errorStr = String(event.reason || '');
-    
+    const reason = event.reason;
+    const errorStr =
+      reason instanceof Error
+        ? (reason.message + " " + (reason.stack || ""))
+        : String(reason || "");
+
     if (shouldSuppressError(errorStr)) {
       event.preventDefault();
       return;
     }
-    
+
     // Call original handler for other errors
     if (originalUnhandledRejection) {
       originalUnhandledRejection(event);

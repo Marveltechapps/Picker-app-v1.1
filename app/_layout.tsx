@@ -13,14 +13,28 @@ import { LocationProvider } from "@/state/locationContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { setupNotificationListeners, getLastNotificationResponse, registerForPushNotifications, sendTokenToBackend, getNotificationPermissionStatus } from "@/utils/notificationService";
 import { setupWebErrorSuppression } from "@/utils/webErrorHandler";
+import { setupNativeErrorHandling } from "@/utils/nativeErrorHandler";
 import Constants from "expo-constants";
+
+// Setup native error handling IMMEDIATELY (before any other code runs)
+// This catches unhandled promise rejections and native module crashes.
+// Wrapped in try-catch so Expo Go never crashes if ErrorUtils is missing.
+if (Platform.OS !== 'web') {
+  try {
+    setupNativeErrorHandling();
+  } catch (e) {
+    if (__DEV__) {
+      console.warn('[App] Native error handler setup failed (safe to ignore in Expo Go):', e);
+    }
+  }
+}
 
 // Setup web error suppression IMMEDIATELY (before any other code runs)
 if (typeof window !== 'undefined') {
   setupWebErrorSuppression();
 }
 
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 const queryClient = new QueryClient({
   defaultOptions: {

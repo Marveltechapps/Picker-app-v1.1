@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, Animated, Platform, Alert, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, Animated, Platform, Alert, ActivityIndicator, InteractionManager } from "react-native";
 import BottomSheetModal from "./BottomSheetModal";
 import { Fingerprint, Check } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
@@ -19,9 +19,9 @@ export default function FingerprintVerifySheet({ visible, onSuccess, onClose, on
   const [hasAutoTriggered, setHasAutoTriggered] = useState(false);
   const scaleAnim = useState(new Animated.Value(1))[0];
 
-  // Real biometric authentication hook
   const {
     isAvailable,
+    isChecking,
     biometricType,
     isAuthenticating,
     isAuthenticated,
@@ -83,31 +83,31 @@ export default function FingerprintVerifySheet({ visible, onSuccess, onClose, on
     }
   }, [isAuthenticating, scaleAnim]);
 
-  // Auto-trigger authentication when sheet opens (only once)
+  // Auto-trigger after sheet animation and availability check; avoids blocking UI
   useEffect(() => {
-    if (visible && isAvailable && !verified && !isAuthenticating && !hasAutoTriggered) {
-      // Auto-trigger fingerprint scan when sheet opens
-      const triggerScan = async () => {
-        if (!isAvailable) return;
+    if (!visible || !isAvailable || verified || isAuthenticating || hasAutoTriggered || isChecking) {
+      return;
+    }
+    let cancelled = false;
+    const task = InteractionManager.runAfterInteractions(() => {
+      const timer = setTimeout(async () => {
+        if (cancelled) return;
         try {
           setError(null);
           setHasAutoTriggered(true);
           await authenticate();
         } catch (err) {
-          // Error is handled by the hook
           console.error('[FingerprintVerifySheet] Auto-trigger error:', err);
         }
-      };
-      // Small delay to ensure UI is ready
-      const timer = setTimeout(() => {
-        triggerScan();
-      }, 300);
+      }, 150);
       return () => clearTimeout(timer);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, isAvailable, verified, isAuthenticating, hasAutoTriggered]);
+    });
+    return () => {
+      cancelled = true;
+      task.cancel();
+    };
+  }, [visible, isAvailable, verified, isAuthenticating, hasAutoTriggered, isChecking, authenticate]);
 
-  // Reset when sheet closes
   useEffect(() => {
     if (!visible) {
       reset();
@@ -180,6 +180,12 @@ export default function FingerprintVerifySheet({ visible, onSuccess, onClose, on
               <Text style={styles.successTitle}>Fingerprint Verified!</Text>
               <Text style={styles.successSubtitle}>Identity confirmed successfully</Text>
             </>
+          ) : isChecking ? (
+            <>
+              <ActivityIndicator size="large" color="#6366F1" style={styles.checkingSpinner} />
+              <Text style={styles.title}>Checking...</Text>
+              <Text style={styles.subtitle}>Verifying biometric availability</Text>
+            </>
           ) : isAuthenticating ? (
             <>
               <Text style={styles.title}>Verifying...</Text>
@@ -194,7 +200,7 @@ export default function FingerprintVerifySheet({ visible, onSuccess, onClose, on
             <>
               <Text style={styles.title}>Place finger on sensor</Text>
               <Text style={styles.subtitle}>
-                {isAvailable 
+                {isAvailable
                   ? 'Authentication will start automatically. Place your finger on the sensor when prompted.'
                   : 'Biometric authentication is not available'}
               </Text>
@@ -207,10 +213,10 @@ export default function FingerprintVerifySheet({ visible, onSuccess, onClose, on
           )}
         </View>
 
-        {!isAuthenticating && !verified && (
+        {!isAuthenticating && !verified && !isChecking && (
           <View style={styles.footer}>
-            <PrimaryButton 
-              title="Scan Fingerprint" 
+            <PrimaryButton
+              title="Scan Fingerprint"
               onPress={handleScan}
               disabled={!isAvailable || isAuthenticating}
             />
@@ -278,6 +284,9 @@ const styles = StyleSheet.create({
   },
   fingerprintCircleSuccess: {
     backgroundColor: "#D1FAE5",
+  },
+  checkingSpinner: {
+    marginBottom: 16,
   },
   progressRing: {
     position: "absolute",

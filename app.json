@@ -7,7 +7,6 @@
     "icon": "./assets/images/icon.png",
     "scheme": "rork-app",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
@@ -44,7 +43,13 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION"
-      ]
+      ],
+      "compileSdkVersion": 34,
+      "targetSdkVersion": 34,
+      "buildToolsVersion": "34.0.0",
+      "minSdkVersion": 24,
+      "usesCleartextTraffic": false,
+      "blockedPermissions": []
     },
     "web": {
       "favicon": "./assets/images/favicon.png",
@@ -94,6 +99,22 @@
         "expo-local-authentication",
         {
           "faceIDPermission": "Allow $(PRODUCT_NAME) to use Face ID for secure authentication"
+        }
+      ],
+      [
+        "react-native-vision-camera",
+        {
+          "cameraPermissionText": "$(PRODUCT_NAME) needs access to your Camera for live face verification.",
+          "enableMicrophonePermission": false,
+          "enableCodeScanner": false
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "extraProguardRules": "android-proguard-rules.pro"
+          }
         }
       ]
     ],

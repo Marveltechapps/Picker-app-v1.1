@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Pressable, Platform } from "react-native";
+import React, { useState, useCallback, useEffect } from "react";
+import { View, Text, StyleSheet, Pressable, Platform, ActivityIndicator, InteractionManager } from "react-native";
 import BottomSheetModal from "./BottomSheetModal";
 import { Camera, Fingerprint, Shield, ChevronRight } from "lucide-react-native";
 
@@ -12,13 +12,28 @@ interface IdentityVerifySheetProps {
 
 export default function IdentityVerifySheet({ visible, onSelectMethod, onClose, onBack }: IdentityVerifySheetProps) {
   const [selectedMethod, setSelectedMethod] = useState<"face" | "fingerprint" | null>(null);
+  const [isSelecting, setIsSelecting] = useState(false);
 
-  const handleSelectMethod = (method: "face" | "fingerprint") => {
-    setSelectedMethod(method);
-    setTimeout(() => {
-      onSelectMethod(method);
-    }, 300);
-  };
+  const handleSelectMethod = useCallback(
+    (method: "face" | "fingerprint") => {
+      if (isSelecting) return;
+      setIsSelecting(true);
+      setSelectedMethod(method);
+      // Immediate UI feedback; defer sheet transition so UI thread stays responsive
+      InteractionManager.runAfterInteractions(() => {
+        onSelectMethod(method);
+        setIsSelecting(false);
+      });
+    },
+    [isSelecting, onSelectMethod]
+  );
+
+  useEffect(() => {
+    if (!visible) {
+      setIsSelecting(false);
+      setSelectedMethod(null);
+    }
+  }, [visible]);
 
   return (
     <BottomSheetModal 
@@ -52,24 +67,32 @@ export default function IdentityVerifySheet({ visible, onSelectMethod, onClose, 
         <Text style={styles.title}>Verify Your Identity</Text>
         <Text style={styles.subtitle}>Choose your preferred method</Text>
 
-        {/* Section 4: Methods Container */}
+        {/* Section 4: Methods Container - disabled during transition to prevent double tap */}
         <View style={styles.methodsContainer}>
           <Pressable
             style={({ pressed }) => [
               styles.methodCard,
               styles.methodCardBlue,
               selectedMethod === "face" && styles.methodCardSelected,
-              pressed && styles.methodCardPressed,
+              (pressed || isSelecting) && styles.methodCardPressed,
+              isSelecting && styles.methodCardDisabled,
             ]}
             onPress={() => handleSelectMethod("face")}
+            disabled={isSelecting}
           >
             <View style={styles.methodLeft}>
               <View style={[styles.methodIcon, styles.methodIconBlue]}>
-                <Camera color="#3B82F6" size={28} strokeWidth={2.5} />
+                {isSelecting && selectedMethod === "face" ? (
+                  <ActivityIndicator size="small" color="#3B82F6" />
+                ) : (
+                  <Camera color="#3B82F6" size={28} strokeWidth={2.5} />
+                )}
               </View>
               <View style={styles.methodInfo}>
                 <Text style={styles.methodTitle}>Face Recognition</Text>
-                <Text style={styles.methodSubtitle}>Quick and contactless</Text>
+                <Text style={styles.methodSubtitle}>
+                  {isSelecting && selectedMethod === "face" ? "Opening..." : "Quick and contactless"}
+                </Text>
               </View>
             </View>
             <ChevronRight color="#9CA3AF" size={24} strokeWidth={2} />
@@ -80,17 +103,25 @@ export default function IdentityVerifySheet({ visible, onSelectMethod, onClose, 
               styles.methodCard,
               styles.methodCardPink,
               selectedMethod === "fingerprint" && styles.methodCardSelected,
-              pressed && styles.methodCardPressed,
+              (pressed || isSelecting) && styles.methodCardPressed,
+              isSelecting && styles.methodCardDisabled,
             ]}
             onPress={() => handleSelectMethod("fingerprint")}
+            disabled={isSelecting}
           >
             <View style={styles.methodLeft}>
               <View style={[styles.methodIcon, styles.methodIconPink]}>
-                <Fingerprint color="#EC4899" size={28} strokeWidth={2.5} />
+                {isSelecting && selectedMethod === "fingerprint" ? (
+                  <ActivityIndicator size="small" color="#EC4899" />
+                ) : (
+                  <Fingerprint color="#EC4899" size={28} strokeWidth={2.5} />
+                )}
               </View>
               <View style={styles.methodInfo}>
                 <Text style={styles.methodTitle}>Fingerprint Scan</Text>
-                <Text style={styles.methodSubtitle}>Secure biometric</Text>
+                <Text style={styles.methodSubtitle}>
+                  {isSelecting && selectedMethod === "fingerprint" ? "Opening..." : "Secure biometric"}
+                </Text>
               </View>
             </View>
             <ChevronRight color="#9CA3AF" size={24} strokeWidth={2} />
@@ -193,6 +224,10 @@ const styles = StyleSheet.create({
   methodCardPressed: {
     opacity: Platform.OS === "web" ? 0.8 : 0.7,
     transform: Platform.OS === "web" ? [{ scale: 0.98 }] : [],
+  },
+  methodCardDisabled: {
+    opacity: 0.7,
+    pointerEvents: "none",
   },
   methodLeft: {
     flexDirection: "row",

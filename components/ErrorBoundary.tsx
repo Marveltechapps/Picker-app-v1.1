@@ -28,6 +28,10 @@ export class ErrorBoundary extends Component<Props, State> {
     if (__DEV__) {
       console.error('ErrorBoundary caught an error:', error, errorInfo);
     }
+    
+    // Also log in production for debugging
+    console.error('ErrorBoundary caught an error:', error.message);
+    
     this.setState({ errorInfo });
   }
 
@@ -49,11 +53,17 @@ export class ErrorBoundary extends Component<Props, State> {
               <Text style={styles.message}>
                 {this.state.error?.message || 'An unexpected error occurred'}
               </Text>
-              {__DEV__ && this.state.errorInfo && (
+              {(__DEV__ || this.state.error?.message?.includes('module') || this.state.error?.message?.includes('require')) && this.state.errorInfo && (
                 <View style={styles.errorDetails}>
                   <Text style={styles.errorDetailsTitle}>Error Details:</Text>
                   <Text style={styles.errorDetailsText}>
-                    {this.state.errorInfo.componentStack}
+                    {this.state.error?.message || 'Unknown error'}
+                    {__DEV__ && this.state.errorInfo.componentStack && (
+                      <>
+                        {'\n\n'}
+                        {this.state.errorInfo.componentStack}
+                      </>
+                    )}
                   </Text>
                 </View>
               )}

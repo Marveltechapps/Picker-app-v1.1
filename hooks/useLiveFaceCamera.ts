@@ -14,6 +14,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, type AppStateStatus, Platform } from "react-native";
 import type { FaceDetectionStatus } from "@/types/faceVerification";
+import { isExpoGo } from "@/utils/expoGoDetection";
 
 // Safely import camera hooks - may not be available in Expo Go
 let useCameraDevice: any = null;
@@ -21,13 +22,18 @@ let useCameraPermission: any = null;
 let useCameraDevices: any = null;
 
 try {
-  const cameraModule = require("react-native-vision-camera");
-  useCameraDevice = cameraModule.useCameraDevice;
-  useCameraPermission = cameraModule.useCameraPermission;
-  useCameraDevices = cameraModule.useCameraDevices;
+  // Only require if not in Expo Go and not on web
+  if (Platform.OS !== 'web' && !isExpoGo()) {
+    const cameraModule = require("react-native-vision-camera");
+    useCameraDevice = cameraModule.useCameraDevice;
+    useCameraPermission = cameraModule.useCameraPermission;
+    useCameraDevices = cameraModule.useCameraDevices;
+  }
 } catch (error) {
   // Camera module not available (e.g., in Expo Go)
-  console.warn("[useLiveFaceCamera] react-native-vision-camera not available:", error);
+  if (__DEV__) {
+    console.warn("[useLiveFaceCamera] react-native-vision-camera not available:", error);
+  }
 }
 
 const DEFAULT_STATUS: FaceDetectionStatus = {

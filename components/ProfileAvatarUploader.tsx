@@ -1,15 +1,14 @@
 import React, { useState, useCallback, useRef } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, Platform, Alert, ActionSheetIOS, Modal, Dimensions, AccessibilityInfo } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, Platform, Alert, ActionSheetIOS, Modal, Dimensions, useWindowDimensions, AccessibilityInfo, ScrollView } from "react-native";
 import { Camera, Check, X, Edit2, RotateCw } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
-import PrimaryButton from "./PrimaryButton";
 import CircularImageCrop from "./CircularImageCrop";
 import { Colors, Typography, Spacing, BorderRadius, Shadows } from "@/constants/theme";
 import { isValidImageUri, getSafeImageSource } from "@/utils/imageUriValidator";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const isSmallScreen = SCREEN_WIDTH < 400; // Responsive breakpoint
-const isMobile = Platform.OS !== 'web'; // Mobile device detection
+const { width: SCREEN_WIDTH_INITIAL } = Dimensions.get("window");
+const isSmallScreenInitial = SCREEN_WIDTH_INITIAL < 400;
+const isMobile = Platform.OS !== "web";
 
 // Constants
 const MIN_IMAGE_DIMENSION = 200;
@@ -24,12 +23,18 @@ interface ProfileAvatarUploaderProps {
   minDimension?: number; // Optional override for min dimension
 }
 
-export default function ProfileAvatarUploader({ 
-  photoUri, 
+const SET_PROFILE_BTN_MIN_HEIGHT = 48;
+const SET_PROFILE_BTN_FONT_SIZE = Platform.select({ web: 16, default: 15 });
+
+export default function ProfileAvatarUploader({
+  photoUri,
   onPhotoSelected,
   maxFileSize = MAX_FILE_SIZE,
-  minDimension = MIN_IMAGE_DIMENSION
+  minDimension = MIN_IMAGE_DIMENSION,
 }: ProfileAvatarUploaderProps) {
+  const { width: windowWidth } = useWindowDimensions();
+  const isSmallScreen = windowWidth < 400;
+
   const [uploading, setUploading] = useState<boolean>(false);
   const [uploadSuccess, setUploadSuccess] = useState<boolean>(false);
   const [showPreview, setShowPreview] = useState<boolean>(false);
@@ -381,84 +386,56 @@ export default function ProfileAvatarUploader({
       >
         <View style={styles.modalOverlay}>
           <View style={styles.previewContainer}>
-            {/* Header */}
-            <View style={styles.previewHeader}>
-              <View style={styles.previewHeaderContent}>
-                <Text style={styles.previewTitle}>Crop & Set Profile Image</Text>
-                <Text style={styles.previewSubtitle}>Review your profile photo</Text>
+            <ScrollView
+              style={styles.previewScrollView}
+              contentContainerStyle={styles.previewScrollContent}
+              showsVerticalScrollIndicator={true}
+              keyboardShouldPersistTaps="handled"
+            >
+              {/* Header */}
+              <View style={styles.previewHeader}>
+                <View style={styles.previewHeaderContent}>
+                  <Text style={styles.previewTitle}>Crop & Set Profile Image</Text>
+                  <Text style={styles.previewSubtitle}>Review your profile photo</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={handleCancelCrop}
+                  style={styles.closeButton}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <X color={Colors.gray[500]} size={22} strokeWidth={2.5} />
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity 
-                onPress={handleCancelCrop} 
-                style={styles.closeButton}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <X color={Colors.gray[500]} size={22} strokeWidth={2.5} />
-              </TouchableOpacity>
-            </View>
-            
-            {/* Circular Preview Image */}
-            <View style={styles.previewImageWrapper}>
-              <View style={styles.previewImageContainer}>
-                {croppedImageUri && isValidImageUri(croppedImageUri) && getSafeImageSource(croppedImageUri) && (
-                  <Image 
-                    source={getSafeImageSource(croppedImageUri)!} 
-                    style={styles.previewImage}
-                    resizeMode="cover"
-                    onError={() => {
-                      if (__DEV__) {
-                        console.warn('Failed to load cropped image:', croppedImageUri);
-                      }
-                    }}
-                  />
-                )}
-                {uploading && (
-                  <View style={styles.previewOverlay}>
-                    <ActivityIndicator size="large" color={Colors.primary[500]} />
-                    <Text style={styles.uploadingText}>Setting profile image...</Text>
-                  </View>
-                )}
-              </View>
-            </View>
 
-            {/* Action Buttons */}
-            <View style={styles.previewActions}>
-              {isSmallScreen ? (
-                // Mobile: Stack buttons vertically
-                <>
-                  <View style={styles.buttonRow}>
-                    <TouchableOpacity 
-                      style={styles.retakeButton} 
-                      onPress={handleRetake}
-                      activeOpacity={0.7}
-                      disabled={uploading}
-                    >
-                      <RotateCw color={Colors.gray[500]} size={18} strokeWidth={2} />
-                      <Text style={styles.retakeButtonText}>Retake</Text>
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity 
-                      style={[styles.cancelButton, { opacity: uploading ? 0.5 : 1 }]} 
-                      onPress={handleCancelCrop}
-                      activeOpacity={0.7}
-                      disabled={uploading}
-                    >
-                      <Text style={styles.cancelButtonText}>Cancel</Text>
-                    </TouchableOpacity>
-                  </View>
-                  
-                  <PrimaryButton
-                    title="Set Profile Image"
-                    onPress={handleConfirmCrop}
-                    disabled={uploading}
-                    loading={uploading}
-                    style={styles.setProfileButton}
-                  />
-                </>
-              ) : (
-                // Desktop: Horizontal layout
-                <>
-                  <TouchableOpacity 
-                    style={styles.retakeButton} 
+              {/* Circular Preview Image */}
+              <View style={styles.previewImageWrapper}>
+                <View style={styles.previewImageContainer}>
+                  {croppedImageUri && isValidImageUri(croppedImageUri) && getSafeImageSource(croppedImageUri) && (
+                    <Image
+                      source={getSafeImageSource(croppedImageUri)!}
+                      style={styles.previewImage}
+                      resizeMode="cover"
+                      onError={() => {
+                        if (__DEV__) {
+                          console.warn("Failed to load cropped image:", croppedImageUri);
+                        }
+                      }}
+                    />
+                  )}
+                  {uploading && (
+                    <View style={styles.previewOverlay}>
+                      <ActivityIndicator size="large" color={Colors.primary[500]} />
+                      <Text style={styles.uploadingText}>Setting profile image...</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              {/* Action Buttons - fixed height on native so button is always visible in Expo Go */}
+              <View style={[styles.previewActions, (isSmallScreen || isMobile) && styles.previewActionsColumn]}>
+                <View style={[styles.buttonRow, (isSmallScreen || isMobile) && styles.buttonRowFull]}>
+                  <TouchableOpacity
+                    style={[styles.retakeButton, (isSmallScreen || isMobile) && styles.retakeButtonFull]}
                     onPress={handleRetake}
                     activeOpacity={0.7}
                     disabled={uploading}
@@ -466,26 +443,41 @@ export default function ProfileAvatarUploader({
                     <RotateCw color={Colors.gray[500]} size={18} strokeWidth={2} />
                     <Text style={styles.retakeButtonText}>Retake</Text>
                   </TouchableOpacity>
-                  
-                  <TouchableOpacity 
-                    style={[styles.cancelButton, { opacity: uploading ? 0.5 : 1 }]} 
+
+                  <TouchableOpacity
+                    style={[
+                      styles.cancelButton,
+                      (isSmallScreen || isMobile) && styles.cancelButtonFull,
+                      { opacity: uploading ? 0.5 : 1 },
+                    ]}
                     onPress={handleCancelCrop}
                     activeOpacity={0.7}
                     disabled={uploading}
                   >
                     <Text style={styles.cancelButtonText}>Cancel</Text>
                   </TouchableOpacity>
-                  
-                  <PrimaryButton
-                    title="Set Profile Image"
-                    onPress={handleConfirmCrop}
-                    disabled={uploading}
-                    loading={uploading}
-                    style={styles.setProfileButton}
-                  />
-                </>
-              )}
-            </View>
+                </View>
+
+                <TouchableOpacity
+                  style={[
+                    styles.setProfileImageButton,
+                    (isSmallScreen || isMobile) && styles.setProfileImageButtonFull,
+                  ]}
+                  onPress={handleConfirmCrop}
+                  activeOpacity={0.8}
+                  disabled={uploading}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  {uploading ? (
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                  ) : (
+                    <Text style={styles.setProfileImageButtonText} numberOfLines={1}>
+                      Set Profile Image
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -610,16 +602,16 @@ const createStyles = () => {
     backgroundColor: "rgba(0, 0, 0, 0.75)",
     justifyContent: "center",
     alignItems: "center",
-    padding: isSmallScreen ? Spacing.md : Spacing.xl, // Smaller padding on mobile
+    padding: isSmallScreenInitial ? Spacing.md : Spacing.xl,
   },
   previewContainer: {
     backgroundColor: Colors.white,
     borderRadius: BorderRadius['2xl'],
     width: "100%",
-    maxWidth: Math.min(SCREEN_WIDTH - (isSmallScreen ? 20 : 40), 420), // More space on mobile
+    maxWidth: Math.min(SCREEN_WIDTH_INITIAL - (isSmallScreenInitial ? 20 : 40), 420),
     padding: 0,
     overflow: "hidden",
-    maxHeight: isSmallScreen ? "90%" : undefined, // Prevent overflow on mobile
+    maxHeight: isSmallScreenInitial ? "90%" : undefined,
     ...Shadows.xl,
   },
   previewHeader: {
@@ -627,8 +619,8 @@ const createStyles = () => {
     justifyContent: "space-between",
     alignItems: "flex-start",
     width: "100%",
-    padding: isSmallScreen ? Spacing.lg : Spacing['2xl'], // Smaller padding on mobile
-    paddingBottom: isSmallScreen ? Spacing.md : Spacing.xl,
+    padding: isSmallScreenInitial ? Spacing.lg : Spacing['2xl'],
+    paddingBottom: isSmallScreenInitial ? Spacing.md : Spacing.xl,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border.light,
   },
@@ -637,7 +629,7 @@ const createStyles = () => {
     marginRight: Spacing.md,
   },
   previewTitle: {
-    fontSize: isSmallScreen ? Typography.fontSize.xl : Typography.fontSize['2xl'], // Smaller on mobile
+    fontSize: isSmallScreenInitial ? Typography.fontSize.xl : Typography.fontSize['2xl'],
     fontWeight: Platform.OS === 'web' ? 700 : Typography.fontWeight.bold, // Use number for web
     color: Colors.text.primary,
     marginBottom: Spacing.xs,
@@ -652,7 +644,7 @@ const createStyles = () => {
     } : {}),
   },
   previewSubtitle: {
-    fontSize: isSmallScreen ? Typography.fontSize.sm : Typography.fontSize.md, // Smaller on mobile
+    fontSize: isSmallScreenInitial ? Typography.fontSize.sm : Typography.fontSize.md,
     fontWeight: Platform.OS === 'web' ? 400 : Typography.fontWeight.regular, // Use number for web
     color: Colors.text.secondary,
     marginTop: Spacing.xs,
@@ -674,20 +666,20 @@ const createStyles = () => {
     backgroundColor: Colors.gray[50],
   },
   previewImageWrapper: {
-    padding: isSmallScreen ? Spacing.lg : Spacing['2xl'], // Smaller padding on mobile
+    padding: isSmallScreenInitial ? Spacing.lg : Spacing['2xl'],
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: Colors.gray[50],
   },
   previewImageContainer: {
-    width: Math.min(SCREEN_WIDTH - (isSmallScreen ? 80 : 120), 320), // More space on mobile
-    height: Math.min(SCREEN_WIDTH - (isSmallScreen ? 80 : 120), 320),
-    borderRadius: Math.min(SCREEN_WIDTH - (isSmallScreen ? 80 : 120), 320) / 2, // Perfect circle
+    width: Math.min(SCREEN_WIDTH_INITIAL - (isSmallScreenInitial ? 80 : 120), 320),
+    height: Math.min(SCREEN_WIDTH_INITIAL - (isSmallScreenInitial ? 80 : 120), 320),
+    borderRadius: Math.min(SCREEN_WIDTH_INITIAL - (isSmallScreenInitial ? 80 : 120), 320) / 2,
     overflow: "hidden",
     backgroundColor: Colors.gray[100],
     ...Shadows.lg,
     position: "relative",
-    borderWidth: isSmallScreen ? 3 : 4, // Thinner border on mobile
+    borderWidth: isSmallScreenInitial ? 3 : 4,
     borderColor: Colors.white,
   },
   previewImage: {
@@ -703,7 +695,7 @@ const createStyles = () => {
     backgroundColor: "rgba(255, 255, 255, 0.95)",
     justifyContent: "center",
     alignItems: "center",
-    borderRadius: Math.min(SCREEN_WIDTH - 120, 320) / 2,
+    borderRadius: Math.min(SCREEN_WIDTH_INITIAL - 120, 320) / 2,
   },
   uploadingText: {
     marginTop: Spacing.md,
@@ -720,13 +712,27 @@ const createStyles = () => {
     } : {}),
   },
   previewActions: {
-    flexDirection: (isSmallScreen || isMobile) ? "column" : "row", // Stack vertically on mobile/small screens
+    flexDirection: "row",
+    flexWrap: "wrap",
     width: "100%",
-    paddingHorizontal: (isSmallScreen || isMobile) ? Spacing.lg : Spacing['2xl'],
-    paddingVertical: (isSmallScreen || isMobile) ? Spacing.lg : Spacing.xl,
-    gap: (isSmallScreen || isMobile) ? Spacing.md : Spacing.sm, // Consistent gap on mobile
-    alignItems: "stretch", // Stretch buttons to full width on mobile
+    paddingHorizontal: isSmallScreenInitial ? Spacing.lg : Spacing['2xl'],
+    paddingVertical: isSmallScreenInitial ? Spacing.lg : Spacing.xl,
+    gap: Spacing.md,
+    alignItems: "stretch",
     justifyContent: "center",
+  },
+  previewActionsColumn: {
+    flexDirection: "column",
+  },
+  buttonRow: {
+    flexDirection: "row",
+    gap: Spacing.md,
+    alignItems: "stretch",
+    flex: 1,
+    minWidth: 0,
+  },
+  buttonRowFull: {
+    width: "100%",
   },
   retakeButton: {
     flexDirection: "row",
@@ -738,12 +744,12 @@ const createStyles = () => {
     backgroundColor: Colors.gray[50],
     borderWidth: 1,
     borderColor: Colors.border.medium,
-    height: 48,
-    width: (isSmallScreen || isMobile) ? "100%" : "auto", // Full width on mobile
-    flex: (isSmallScreen || isMobile) ? 0 : undefined, // Don't flex on mobile
-    flexShrink: 0,
-    marginRight: (isSmallScreen || isMobile) ? 0 : Spacing.md,
-    marginBottom: 0,
+    minHeight: 48,
+    flex: 1,
+    minWidth: 0,
+  },
+  retakeButtonFull: {
+    flex: 1,
   },
   retakeButtonText: {
     fontSize: Typography.fontSize.md,
@@ -765,11 +771,12 @@ const createStyles = () => {
     backgroundColor: Colors.gray[100],
     alignItems: "center",
     justifyContent: "center",
-    height: 48,
-    width: (isSmallScreen || isMobile) ? "100%" : "auto", // Full width on mobile
-    flex: (isSmallScreen || isMobile) ? 0 : 1, // Don't flex on mobile
-    marginRight: (isSmallScreen || isMobile) ? 0 : Spacing.md,
-    marginBottom: 0,
+    minHeight: 48,
+    flex: 1,
+    minWidth: 0,
+  },
+  cancelButtonFull: {
+    flex: 1,
   },
   cancelButtonText: {
     fontSize: Typography.fontSize.md,
@@ -784,11 +791,46 @@ const createStyles = () => {
       MozOsxFontSmoothing: 'grayscale' as any,
     } : {}),
   },
-  setProfileButton: {
-    flex: (isSmallScreen || isMobile) ? 0 : 1.5, // Don't flex on mobile
-    minWidth: (isSmallScreen || isMobile) ? 0 : 140,
-    height: 48,
-    width: (isSmallScreen || isMobile) ? "100%" : undefined, // Full width on mobile
+  previewScrollView: {
+    flex: 1,
+    maxHeight: "100%",
+  },
+  previewScrollContent: {
+    flexGrow: 1,
+    paddingBottom: isSmallScreenInitial ? Spacing.xl : Spacing["2xl"],
+  },
+  setProfileImageButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Colors.primary[650],
+    borderRadius: BorderRadius.lg,
+    paddingVertical: Spacing.lg + 2,
+    paddingHorizontal: Spacing.xl,
+    height: SET_PROFILE_BTN_MIN_HEIGHT,
+    minHeight: SET_PROFILE_BTN_MIN_HEIGHT,
+    minWidth: 140,
+    flex: Platform.OS === "web" ? 1 : undefined,
+    ...(Platform.OS === "web"
+      ? { boxShadow: "0px 4px 12px rgba(91, 78, 255, 0.3)" }
+      : { ...Shadows.lg, shadowColor: Colors.primary[650], shadowOpacity: 0.3 }),
+  },
+  setProfileImageButtonFull: {
+    width: "100%",
+    alignSelf: "stretch",
+  },
+  setProfileImageButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    letterSpacing: Typography.letterSpacing.wide,
+    fontFamily: Platform.select({
+      web: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+      default: undefined,
+    }),
+    ...(Platform.OS === "web"
+      ? { WebkitFontSmoothing: "antialiased" as any, MozOsxFontSmoothing: "grayscale" as any }
+      : {}),
   },
   errorContainer: {
     position: "absolute",

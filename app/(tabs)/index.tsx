@@ -86,13 +86,14 @@ export default function HomeScreen() {
   const handleIdentityMethodSelect = (method: "face" | "fingerprint") => {
     setVerificationMethod(method);
     setShowIdentityVerify(false);
+    // Short delay so identity sheet can start closing; reduces total wait vs 300ms
     setTimeout(() => {
       if (method === "face") {
         setShowFaceVerify(true);
       } else {
         setShowFingerprintVerify(true);
       }
-    }, 300);
+    }, 100);
   };
 
   const handleVerificationSuccess = () => {

@@ -121,30 +121,30 @@ class FaceRecognitionService {
 
   /**
    * Get face detector settings for expo-camera
-   * Returns null if face detector is not available (web/Expo Go)
+   * Returns undefined if face detector is not available (web/Expo Go) or in release APK if enums are stripped.
    */
   getFaceDetectorSettings(): any {
     if (!FaceDetector || Platform.OS === 'web') {
-      return undefined; // Face detection not available
+      return undefined;
     }
     try {
+      // In release APK, minification can strip static enum props; guard each access.
+      const Mode = FaceDetector.FaceDetectorMode;
+      const Landmarks = FaceDetector.FaceDetectorLandmarks;
+      const Classifications = FaceDetector.FaceDetectorClassifications;
+      if (!Mode || !Landmarks || !Classifications) {
+        return undefined;
+      }
       return {
-        mode: FaceDetector.FaceDetectorMode.fast,
-        detectLandmarks: FaceDetector.FaceDetectorLandmarks.all,
-        runClassifications: FaceDetector.FaceDetectorClassifications.all,
-        minDetectionInterval: 100, // Check every 100ms for faster detection
-        tracking: true, // Enable face tracking for better performance
-      };
-    } catch (error) {
-      console.warn('[FaceRecognitionService] Error getting face detector settings:', error);
-      // Fallback to basic settings
-      return {
-        mode: FaceDetector?.FaceDetectorMode?.fast ?? 0,
-        detectLandmarks: FaceDetector?.FaceDetectorLandmarks?.all ?? 0,
-        runClassifications: FaceDetector?.FaceDetectorClassifications?.all ?? 0,
+        mode: Mode.fast ?? 0,
+        detectLandmarks: Landmarks.all ?? 0,
+        runClassifications: Classifications.all ?? 0,
         minDetectionInterval: 100,
         tracking: true,
       };
+    } catch (_) {
+      // Return undefined so CameraView runs without face detector (no crash)
+      return undefined;
     }
   }
 

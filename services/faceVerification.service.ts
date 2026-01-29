@@ -34,6 +34,22 @@ export async function verifyFace(
   payload: VerifyFacePayload,
   options?: { baseUrl?: string; token?: string }
 ): Promise<VerifyFaceResult> {
+  // Guard: prevent "Cannot read properties of undefined (reading 'payload')" style errors
+  if (payload == null || typeof payload !== "object") {
+    return {
+      success: false,
+      error: "Invalid payload: expected an object with uri or base64",
+    };
+  }
+  const hasUri = "uri" in payload && typeof payload.uri === "string";
+  const hasBase64 = "base64" in payload && typeof payload.base64 === "string";
+  if (!hasUri && !hasBase64) {
+    return {
+      success: false,
+      error: "Invalid payload: must contain uri or base64",
+    };
+  }
+
   const baseUrl = (options?.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/, "");
   const url = `${baseUrl}${VERIFY_ENDPOINT}`;
   let lastError: Error | null = null;
@@ -45,7 +61,7 @@ export async function verifyFace(
 
       let res: Response;
 
-      if ("uri" in payload) {
+      if (hasUri) {
         const form = new FormData();
         form.append("face", {
           uri: payload.uri,

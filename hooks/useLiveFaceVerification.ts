@@ -13,25 +13,31 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, type AppStateStatus, Platform } from "react-native";
-import { Worklets } from "react-native-worklets-core";
 import { mapVisionCameraFacesToStatus } from "@/utils/visionCameraFaceMapper";
 import { verifyFace } from "@/services/faceVerification.service";
 import type { FaceDetectionStatus } from "@/types/faceVerification";
 import { isExpoGo } from "@/utils/expoGoDetection";
 
-// Conditionally import react-native-vision-camera (not available in Expo Go)
+// Conditionally import react-native-vision-camera and worklets (not available in Expo Go)
 let useCameraDevice: any = null;
 let useCameraPermission: any = null;
 let useFrameProcessor: any = null;
 let runAsync: any = null;
 let Camera: any = null;
 let useFaceDetector: any = null;
+let Worklets: any = null;
 type Face = any;
 type Frame = any;
 
 try {
   if (Platform.OS !== 'web' && !isExpoGo()) {
     const visionCamera = require("react-native-vision-camera");
+    
+    // Validate module is properly initialized
+    if (!visionCamera || typeof visionCamera.useCameraDevice !== 'function') {
+      throw new Error("react-native-vision-camera not properly initialized");
+    }
+    
     useCameraDevice = visionCamera.useCameraDevice;
     useCameraPermission = visionCamera.useCameraPermission;
     useFrameProcessor = visionCamera.useFrameProcessor;
@@ -39,13 +45,32 @@ try {
     Camera = visionCamera.Camera;
     
     const faceDetector = require("react-native-vision-camera-face-detector");
+    
+    // Validate face detector
+    if (!faceDetector || typeof faceDetector.useFaceDetector !== 'function') {
+      throw new Error("react-native-vision-camera-face-detector not properly initialized");
+    }
+    
     useFaceDetector = faceDetector.useFaceDetector;
+    
+    // Conditionally import worklets
+    try {
+      const workletsCore = require("react-native-worklets-core");
+      if (!workletsCore || !workletsCore.Worklets) {
+        throw new Error("react-native-worklets-core not properly initialized");
+      }
+      Worklets = workletsCore.Worklets;
+    } catch (workletsError) {
+      console.error("[useLiveFaceVerification] react-native-worklets-core initialization failed:", workletsError);
+    }
   }
-} catch (error) {
+} catch (error: any) {
   // Module not available (Expo Go or not installed)
-  if (__DEV__) {
-    console.warn("[useLiveFaceVerification] react-native-vision-camera not available:", error);
-  }
+  console.error("[useLiveFaceVerification] Native module initialization failed:", {
+    error: error?.message || error,
+    stack: error?.stack,
+    platform: Platform.OS,
+  });
 }
 
 // Throttle verification calls (1-2 seconds)
@@ -246,12 +271,12 @@ export function useLiveFaceVerification({
     []
   );
 
-  const handleFacesJS = Worklets.createRunOnJS(handleFaces);
+  const handleFacesJS = Worklets ? Worklets.createRunOnJS(handleFaces) : handleFaces;
 
   /**
    * Frame processor - runs on every frame
    */
-  const frameProcessor = isCameraAvailable && useFrameProcessor && runAsync ? useFrameProcessor(
+  const frameProcessor = isCameraAvailable && useFrameProcessor && runAsync && Worklets ? useFrameProcessor(
     (frame: any) => {
       "worklet";
       runAsync(frame, () => {

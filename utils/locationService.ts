@@ -238,65 +238,27 @@ export async function getCurrentLocation(): Promise<LocationData | null> {
 }
 
 /**
- * Reverse geocode on web using Nominatim (expo-location throws on web).
+ * Reverse geocode on web.
+ * Nominatim does not allow direct browser requests (CORS + 403), so we return a
+ * fallback address from coordinates to avoid console errors and failed fetches.
  */
 async function reverseGeocodeWeb(lat: number, lon: number): Promise<LocationAddress | null> {
-  try {
-    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`;
-    const res = await fetch(url, {
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'PickerApp/1.0 (React Native)',
-      },
-    });
-    if (!res.ok) return null;
-    const data = (await res.json()) as {
-      address?: {
-        suburb?: string;
-        neighbourhood?: string;
-        village?: string;
-        city?: string;
-        town?: string;
-        state?: string;
-        state_district?: string;
-        postcode?: string;
-        country?: string;
-        road?: string;
-        house_number?: string;
-      };
-    };
-    const a = data?.address;
-    if (!a) return null;
-
-    const area = a.suburb ?? a.neighbourhood ?? a.village ?? a.state_district;
-    const city = a.city ?? a.town ?? a.village;
-    const region = a.state;
-    const street = a.road
-      ? [a.house_number, a.road].filter(Boolean).join(' ')
-      : undefined;
-    const parts: string[] = [];
-    if (area) parts.push(area);
-    if (city && city !== area) parts.push(city);
-    if (region) parts.push(region);
-    const formattedAddress = parts.length > 0 ? parts.join(', ') : (a.country ?? 'Unknown Location');
-
-    return {
-      street,
-      city: city ?? undefined,
-      region: region ?? undefined,
-      postalCode: a.postcode,
-      country: a.country,
-      formattedAddress,
-    };
-  } catch (e) {
-    if (__DEV__) console.error('Nominatim reverse geocode error:', e);
-    return null;
-  }
+  // Return fallback immediately on web: Nominatim blocks browser requests (CORS, 403).
+  // This avoids "Access to fetch blocked by CORS" and "403 Forbidden" console errors.
+  const formattedAddress = `${lat.toFixed(4)}°, ${lon.toFixed(4)}°`;
+  return {
+    formattedAddress,
+    city: undefined,
+    region: undefined,
+    postalCode: undefined,
+    country: undefined,
+    street: undefined,
+  };
 }
 
 /**
  * Reverse geocode coordinates to human-readable address.
- * Uses expo-location on native; Nominatim on web.
+ * Uses expo-location on native; on web returns coordinates fallback (Nominatim blocks browser CORS).
  */
 export async function reverseGeocode(
   latitude: number,

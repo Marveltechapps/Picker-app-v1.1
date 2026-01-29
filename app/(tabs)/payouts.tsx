@@ -32,7 +32,12 @@ import { calculateBasePay, calculateOvertimePay, getBasePayPerHour, getOvertimeM
 import { useWalletBalance, useWithdraw } from "@/hooks/useWithdraw";
 import { useTransactionHistory } from "@/hooks/useTransactionHistory";
 import { useDefaultBankAccount, useVerifyBankAccount, useSaveBankAccount } from "@/hooks/useBankVerification";
-import { validateIFSC, validateAccountNumber, validateAccountHolder } from "@/services/bank.service";
+import {
+  validateBankForm,
+  isDummyBankDetails,
+  getDummyVerificationResponse,
+  maskAccountNumber,
+} from "@/services/bank.service";
 import type { Transaction } from "@/services/wallet.service";
 
 type TabType = "breakdown" | "incentives" | "history";
@@ -69,12 +74,15 @@ export default function PayoutsScreen() {
   const [confettiAnim] = useState(new Animated.Value(0));
   const [isDownloading, setIsDownloading] = useState(false);
   const [isAmountInputFocused, setIsAmountInputFocused] = useState(false);
+  const [lastWithdrawnAmount, setLastWithdrawnAmount] = useState("");
 
   // Bank account form state
   const [accountNumber, setAccountNumber] = useState("");
   const [ifscCode, setIfscCode] = useState("");
   const [accountHolderName, setAccountHolderName] = useState("");
   const [isVerifyingBank, setIsVerifyingBank] = useState(false);
+  /** True when bank was added via dummy validation (no API) – withdraw is simulated */
+  const [isDummyBankMode, setIsDummyBankMode] = useState(false);
 
   // API Hooks
   const { data: walletBalance, isLoading: isLoadingBalance } = useWalletBalance();
@@ -84,11 +92,12 @@ export default function PayoutsScreen() {
   const saveBankMutation = useSaveBankAccount();
   const withdrawMutation = useWithdraw();
 
-  // Load default bank account
+  // Load default bank account from API; clear dummy mode when real account is available
   useEffect(() => {
     if (defaultBankAccount) {
+      setIsDummyBankMode(false);
       setBankDetails({
-        accountNumber: defaultBankAccount.accountNumber, // Already masked
+        accountNumber: defaultBankAccount.accountNumber,
         ifsc: defaultBankAccount.ifscCode,
         holderName: defaultBankAccount.accountHolder,
         bankName: defaultBankAccount.bankName,
@@ -137,14 +146,16 @@ export default function PayoutsScreen() {
     tds: 1500,
   };
   
-  // Use real wallet balance if available, otherwise fallback to calculated
-  const netPayout = walletBalance?.availableBalance ?? Math.max(0, grossPay - deductions.tds);
-  
+  // Use real wallet balance if available; fallback to calculated or dummy so UI never shows NaN/blank
+  const rawNet = walletBalance?.availableBalance ?? Math.max(0, grossPay - deductions.tds);
+  const netPayout = Number.isFinite(rawNet) && rawNet >= 0 ? rawNet : 25000;
+  const displayPayDate = payDate || nextMonth.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
   const payoutData = {
     currentMonth: currentMonthYear,
     netPayout,
     status: "processing" as const,
-    payDate: payDate,
+    payDate: displayPayDate,
     earnings: earningsBreakdown,
     grossPay,
     deductions,
@@ -189,30 +200,42 @@ export default function PayoutsScreen() {
   };
 
   const handleAddBank = async () => {
-    // Client-side validation
-    if (!validateAccountHolder(accountHolderName)) {
-      Alert.alert("Validation Error", "Please enter a valid account holder name (2-100 characters)");
+    const holder = accountHolderName.trim();
+    const accNum = accountNumber.trim();
+    const ifsc = ifscCode.trim().toUpperCase();
+
+    const validation = validateBankForm(accountHolderName, accountNumber, ifscCode);
+    if (!validation.valid) {
+      Alert.alert("Validation Error", validation.error ?? "Please check your bank details.");
       return;
     }
 
-    if (!validateAccountNumber(accountNumber)) {
-      Alert.alert("Validation Error", "Please enter a valid account number (9-18 digits)");
-      return;
-    }
-
-    if (!validateIFSC(ifscCode)) {
-      Alert.alert("Validation Error", "Please enter a valid IFSC code (11 characters)");
+    // Dummy: skip API and set local bank details for demo
+    if (isDummyBankDetails(holder, accNum, ifsc)) {
+      const dummy = getDummyVerificationResponse();
+      setBankDetails({
+        accountNumber: maskAccountNumber(accNum),
+        ifsc,
+        holderName: holder,
+        bankName: dummy.bankName || "HDFC Bank",
+      });
+      setIsDummyBankMode(true);
+      setAccountNumber("");
+      setIfscCode("");
+      setAccountHolderName("");
+      setShowAddBankModal(false);
+      setShowWithdrawModal(true);
+      setWithdrawAmount("");
+      Alert.alert("Demo Mode", "Bank details accepted (demo). You can withdraw using simulated flow.");
       return;
     }
 
     setIsVerifyingBank(true);
-
     try {
-      // Step 1: Verify bank account
       const verificationResult = await verifyBankMutation.mutateAsync({
-        accountHolder: accountHolderName,
-        accountNumber: accountNumber,
-        ifscCode: ifscCode.toUpperCase(),
+        accountHolder: holder,
+        accountNumber: accNum,
+        ifscCode: ifsc,
       });
 
       if (!verificationResult.verified) {
@@ -224,32 +247,28 @@ export default function PayoutsScreen() {
         return;
       }
 
-      // Step 2: Save verified bank account
       const savedAccount = await saveBankMutation.mutateAsync({
-        accountHolder: accountHolderName,
-        accountNumber: accountNumber,
-        ifscCode: ifscCode.toUpperCase(),
+        accountHolder: holder,
+        accountNumber: accNum,
+        ifscCode: ifsc,
         bankName: verificationResult.bankName,
         branch: verificationResult.branch,
       });
 
-      // Update local state
       setBankDetails({
-        accountNumber: savedAccount.accountNumber, // Masked by backend
+        accountNumber: savedAccount.accountNumber,
         ifsc: savedAccount.ifscCode,
         holderName: savedAccount.accountHolder,
         bankName: savedAccount.bankName,
       });
+      setIsDummyBankMode(false);
 
-      // Clear form
       setAccountNumber("");
       setIfscCode("");
       setAccountHolderName("");
-
       setShowAddBankModal(false);
       setShowWithdrawModal(true);
       setWithdrawAmount("");
-
       Alert.alert("Success", "Bank account verified and saved successfully!");
     } catch (error) {
       Alert.alert(
@@ -262,19 +281,38 @@ export default function PayoutsScreen() {
   };
 
   const handleConfirmWithdraw = async () => {
-    if (!bankDetails || !defaultBankAccount) {
+    if (!bankDetails) {
       Alert.alert("Error", "Bank account not found. Please add bank details first.");
       return;
     }
 
     const amount = parseFloat(withdrawAmount);
-    if (isNaN(amount) || amount <= 0) {
-      Alert.alert("Error", "Please enter a valid amount");
+    if (!Number.isFinite(amount) || amount <= 0) {
+      Alert.alert("Error", "Please enter a valid amount.");
       return;
     }
 
-    if (walletBalance && amount > walletBalance.availableBalance) {
-      Alert.alert("Error", "Insufficient balance");
+    const maxAllowed = walletBalance?.availableBalance ?? netPayout;
+    if (amount > maxAllowed) {
+      Alert.alert("Error", "Insufficient balance.");
+      return;
+    }
+
+    // Dummy mode: simulate success without calling withdraw API
+    if (isDummyBankMode) {
+      setLastWithdrawnAmount(withdrawAmount);
+      setShowWithdrawModal(false);
+      setShowSuccessModal(true);
+      setWithdrawAmount("");
+      Animated.sequence([
+        Animated.timing(confettiAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+        Animated.timing(confettiAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
+      ]).start();
+      return;
+    }
+
+    if (!defaultBankAccount) {
+      Alert.alert("Error", "Bank account not linked. Please add bank details again.");
       return;
     }
 
@@ -285,23 +323,14 @@ export default function PayoutsScreen() {
       });
 
       if (result.success) {
+        setLastWithdrawnAmount(withdrawAmount);
         setShowWithdrawModal(false);
         setShowSuccessModal(true);
+        setWithdrawAmount("");
         Animated.sequence([
-          Animated.timing(confettiAnim, {
-            toValue: 1,
-            duration: 600,
-            useNativeDriver: true,
-          }),
-          Animated.timing(confettiAnim, {
-            toValue: 0,
-            duration: 400,
-            useNativeDriver: true,
-          }),
+          Animated.timing(confettiAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+          Animated.timing(confettiAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
         ]).start();
-
-        // Refresh transaction history
-        // This is handled automatically by React Query invalidation
       } else {
         Alert.alert(
           "Withdrawal Failed",
@@ -715,7 +744,7 @@ export default function PayoutsScreen() {
               <CheckCircle size={64} color="#10B981" />
             </View>
             <Text style={styles.successTitle}>Withdrawal Successful!</Text>
-            <Text style={styles.successAmount}>₹{withdrawAmount} Withdrawn</Text>
+            <Text style={styles.successAmount}>₹{lastWithdrawnAmount || withdrawAmount} Withdrawn</Text>
             <Text style={styles.successMessage}>Your withdrawal request has been processed successfully</Text>
             <TouchableOpacity
               style={styles.successButton}

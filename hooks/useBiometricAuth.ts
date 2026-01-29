@@ -30,6 +30,8 @@ export interface UseBiometricAuthOptions {
 export interface UseBiometricAuthReturn {
   /** Whether biometric hardware is available */
   isAvailable: boolean;
+  /** Whether availability check is in progress (avoids UI flash / shows loading) */
+  isChecking: boolean;
   /** Biometric type (fingerprint, facial, etc.) */
   biometricType: BiometricType;
   /** Whether authentication is in progress */
@@ -56,6 +58,7 @@ export function useBiometricAuth(options: UseBiometricAuthOptions = {}): UseBiom
   } = options;
 
   const [isAvailable, setIsAvailable] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
   const [biometricType, setBiometricType] = useState<BiometricType>({
     available: false,
     type: 'none',
@@ -83,16 +86,17 @@ export function useBiometricAuth(options: UseBiometricAuthOptions = {}): UseBiom
   }, []);
 
   /**
-   * Check biometric availability
+   * Check biometric availability (runs off main thread via native bridge)
    */
   const checkAvailability = useCallback(async () => {
     try {
+      setIsChecking(true);
+      setError(null);
       const result = await biometricService.checkHardwareSupport();
-      
+
       if (mounted.current) {
         setBiometricType(result);
         setIsAvailable(result.available);
-        
         if (!result.available && result.error) {
           setError(result.error);
         } else {
@@ -104,6 +108,10 @@ export function useBiometricAuth(options: UseBiometricAuthOptions = {}): UseBiom
       if (mounted.current) {
         setError(err instanceof Error ? err.message : 'Failed to check biometric availability');
         setIsAvailable(false);
+      }
+    } finally {
+      if (mounted.current) {
+        setIsChecking(false);
       }
     }
   }, []);
@@ -216,6 +224,7 @@ export function useBiometricAuth(options: UseBiometricAuthOptions = {}): UseBiom
 
   return {
     isAvailable,
+    isChecking,
     biometricType,
     isAuthenticating,
     isAuthenticated,

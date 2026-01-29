@@ -57,6 +57,8 @@ export function useFaceRecognition(options: UseFaceRecognitionOptions = {}): Use
   const verificationTriggered = useRef(false);
   const dummyTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastFaceCountRef = useRef(0);
+  const lastFaceUpdateRef = useRef(0);
+  const FACE_UPDATE_THROTTLE_MS = 180;
   const onStatusChangeRef = useRef(onStatusChange);
   const onVerifiedRef = useRef(onVerified);
   const onVerifyFailedRef = useRef(onVerifyFailed);
@@ -156,7 +158,16 @@ export function useFaceRecognition(options: UseFaceRecognitionOptions = {}): Use
         return;
       }
 
-      // Log face detection for debugging
+      const now = Date.now();
+      if (now - lastFaceUpdateRef.current < FACE_UPDATE_THROTTLE_MS) {
+        if (faces.length > 0) {
+          lastFaceCountRef.current = faces.length;
+          if (!verificationTriggered.current) triggerSuccess();
+        }
+        return;
+      }
+      lastFaceUpdateRef.current = now;
+
       if (__DEV__ && faces.length > 0) {
         console.log(`[useFaceRecognition] Detected ${faces.length} face(s)`);
       }
@@ -169,7 +180,6 @@ export function useFaceRecognition(options: UseFaceRecognitionOptions = {}): Use
       setStatus(newStatus);
       onStatusChangeRef.current?.(newStatus);
 
-      // SINGLE RULE: Any face detected → verified immediately. No conditions.
       if (faces.length > 0) {
         if (__DEV__) {
           console.log('[useFaceRecognition] Face detected, triggering verification');

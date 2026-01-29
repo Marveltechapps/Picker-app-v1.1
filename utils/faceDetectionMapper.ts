@@ -1,5 +1,18 @@
-import type { RNMLKitFace } from "@infinitered/react-native-mlkit-face-detection";
 import type { FaceDetectionStatus } from "@/components/FaceDetectionCamera";
+import { Platform } from "react-native";
+import Constants from "expo-constants";
+
+// Define a generic face type to avoid importing unsupported module
+interface GenericFace {
+  frame: {
+    origin: { x: number; y: number };
+    size: { x: number; y: number };
+  };
+  hasLeftEyeOpenProbability?: boolean;
+  hasRightEyeOpenProbability?: boolean;
+  leftEyeOpenProbability?: number;
+  rightEyeOpenProbability?: number;
+}
 
 /** Center region of image (oval-like): 50% width, 50% height. Face center must fall inside. */
 const CENTER_REGION_WIDTH_RATIO = 0.5;
@@ -11,9 +24,10 @@ const EYE_OPEN_SUNGLASSES_THRESHOLD = 0.2;
 /**
  * Maps ML Kit face detection result + image dimensions to FaceDetectionStatus.
  * Used for real-time live verification (face in oval, no glasses, etc.).
+ * Safe for Expo Go - uses generic types instead of importing unsupported module.
  */
 export function mapFacesToDetectionStatus(
-  faces: RNMLKitFace[],
+  faces: GenericFace[],
   imageWidth: number,
   imageHeight: number
 ): FaceDetectionStatus {
