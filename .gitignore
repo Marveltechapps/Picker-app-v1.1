@@ -12,6 +12,10 @@ expo-env.d.ts
 # Native
 ios/
 android/
+
+# APK builds (do not commit to repo)
+*.apk
+apk/*.apk
 *.orig.*
 *.jks
 *.p8
