@@ -29,7 +29,9 @@ export default function BottomSheetModal({
     ? { 
         showsVerticalScrollIndicator: false, 
         style: styles.scrollView,
-        contentContainerStyle: styles.scrollContent 
+        contentContainerStyle: styles.scrollContent,
+        keyboardShouldPersistTaps: "handled" as const,
+        nestedScrollEnabled: true,
       } 
     : { style: styles.content };
 

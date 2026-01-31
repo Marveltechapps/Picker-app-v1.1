@@ -1,6 +1,6 @@
 module.exports = function (config) {
-  // Expo passes { config } where config is the static app.json expo. Preserve full config for standalone APK.
-  const base = config?.config ?? {};
-  const expo = { ...base, scheme: base.scheme ?? 'rork-app' };
-  return { expo };
+  // Ensure scheme is set for Linking (removes "Linking requires a build-time setting scheme" warning)
+  if (!config.expo) config.expo = {};
+  if (!config.expo.scheme) config.expo.scheme = 'rork-app';
+  return config;
 };

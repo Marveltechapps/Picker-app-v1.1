@@ -37,8 +37,8 @@ export interface UseFaceRecognitionReturn {
   reset: () => void;
 }
 
-/** Dummy flow: camera ready → auto-verify after short delay so UI is visible first. */
-const CAMERA_READY_VERIFY_MS = 800;
+/** Camera ready → auto-verify. Reduced for faster UX in Expo Go. */
+const CAMERA_READY_VERIFY_MS = 350;
 
 export function useFaceRecognition(options: UseFaceRecognitionOptions = {}): UseFaceRecognitionReturn {
   const { onStatusChange, onVerified, onVerifyFailed, visible = true } = options;
@@ -88,6 +88,7 @@ export function useFaceRecognition(options: UseFaceRecognitionOptions = {}): Use
   const triggerSuccess = useCallback(() => {
     if (!mounted.current || verificationTriggered.current) return;
     verificationTriggered.current = true;
+    if (__DEV__) console.log('[useFaceRecognition] Triggering verify');
     if (readyTimerRef.current) {
       clearTimeout(readyTimerRef.current);
       readyTimerRef.current = null;

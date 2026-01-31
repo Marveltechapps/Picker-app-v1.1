@@ -142,41 +142,27 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
   }, []);
 
   const loadState = async () => {
-    // Safety: in release APK AsyncStorage can hang or fail; never block app start.
-    const LOAD_TIMEOUT_MS = 5000;
-    const timeoutPromise = new Promise<{ timedOut: true }>((resolve) =>
-      setTimeout(() => resolve({ timedOut: true }), LOAD_TIMEOUT_MS)
-    );
-    const dataPromise = Promise.all([
-      AsyncStorage.getItem(STORAGE_KEYS.PERMISSION_ONBOARDING),
-      AsyncStorage.getItem(STORAGE_KEYS.LOGIN),
-      AsyncStorage.getItem(STORAGE_KEYS.PROFILE),
-      AsyncStorage.getItem(STORAGE_KEYS.VERIFICATION),
-      AsyncStorage.getItem(STORAGE_KEYS.DOCUMENTS),
-      AsyncStorage.getItem(STORAGE_KEYS.TRAINING),
-      AsyncStorage.getItem(STORAGE_KEYS.SETUP),
-      AsyncStorage.getItem(STORAGE_KEYS.MANAGER_OTP),
-      AsyncStorage.getItem(STORAGE_KEYS.PERMISSIONS),
-      AsyncStorage.getItem(STORAGE_KEYS.PHONE_NUMBER),
-      AsyncStorage.getItem(STORAGE_KEYS.USER_PROFILE),
-      AsyncStorage.getItem(STORAGE_KEYS.DOCUMENT_UPLOADS),
-      AsyncStorage.getItem(STORAGE_KEYS.TRAINING_PROGRESS),
-      AsyncStorage.getItem(STORAGE_KEYS.LOCATION_TYPE),
-      AsyncStorage.getItem(STORAGE_KEYS.SELECTED_SHIFTS),
-      AsyncStorage.getItem(STORAGE_KEYS.SHIFT_ACTIVE),
-      AsyncStorage.getItem(STORAGE_KEYS.SHIFT_START_TIME),
-      AsyncStorage.getItem(STORAGE_KEYS.NOTIFICATIONS),
-    ]).then((data) => ({ timedOut: false as const, data }));
-
     try {
-      const result = await Promise.race([dataPromise, timeoutPromise]);
-
-      if (result.timedOut) {
-        setState((prev) => ({ ...prev, isLoading: false }));
-        return;
-      }
-
-      const [onboarding, login, profile, verification, documents, training, setup, managerOTP, permissions, phoneNumber, userProfile, documentUploads, trainingProgress, locationType, selectedShifts, shiftActive, shiftStartTime, notifications] = result.data;
+      const [onboarding, login, profile, verification, documents, training, setup, managerOTP, permissions, phoneNumber, userProfile, documentUploads, trainingProgress, locationType, selectedShifts, shiftActive, shiftStartTime, notifications] = await Promise.all([
+        AsyncStorage.getItem(STORAGE_KEYS.PERMISSION_ONBOARDING),
+        AsyncStorage.getItem(STORAGE_KEYS.LOGIN),
+        AsyncStorage.getItem(STORAGE_KEYS.PROFILE),
+        AsyncStorage.getItem(STORAGE_KEYS.VERIFICATION),
+        AsyncStorage.getItem(STORAGE_KEYS.DOCUMENTS),
+        AsyncStorage.getItem(STORAGE_KEYS.TRAINING),
+        AsyncStorage.getItem(STORAGE_KEYS.SETUP),
+        AsyncStorage.getItem(STORAGE_KEYS.MANAGER_OTP),
+        AsyncStorage.getItem(STORAGE_KEYS.PERMISSIONS),
+        AsyncStorage.getItem(STORAGE_KEYS.PHONE_NUMBER),
+        AsyncStorage.getItem(STORAGE_KEYS.USER_PROFILE),
+        AsyncStorage.getItem(STORAGE_KEYS.DOCUMENT_UPLOADS),
+        AsyncStorage.getItem(STORAGE_KEYS.TRAINING_PROGRESS),
+        AsyncStorage.getItem(STORAGE_KEYS.LOCATION_TYPE),
+        AsyncStorage.getItem(STORAGE_KEYS.SELECTED_SHIFTS),
+        AsyncStorage.getItem(STORAGE_KEYS.SHIFT_ACTIVE),
+        AsyncStorage.getItem(STORAGE_KEYS.SHIFT_START_TIME),
+        AsyncStorage.getItem(STORAGE_KEYS.NOTIFICATIONS),
+      ]);
 
       setState({
         hasCompletedPermissionOnboarding: onboarding === "true",

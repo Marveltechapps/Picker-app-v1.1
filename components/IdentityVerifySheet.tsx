@@ -1,7 +1,9 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { View, Text, StyleSheet, Pressable, Platform, ActivityIndicator } from "react-native";
+import * as Haptics from "expo-haptics";
 import BottomSheetModal from "./BottomSheetModal";
 import { Camera, Fingerprint, Shield, ChevronRight } from "lucide-react-native";
+import { preloadVerification } from "@/utils/verificationPreload";
 
 interface IdentityVerifySheetProps {
   visible: boolean;
@@ -13,24 +15,38 @@ interface IdentityVerifySheetProps {
 export default function IdentityVerifySheet({ visible, onSelectMethod, onClose, onBack }: IdentityVerifySheetProps) {
   const [selectedMethod, setSelectedMethod] = useState<"face" | "fingerprint" | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
+  const isSelectingRef = useRef(false);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const handleSelectMethod = useCallback(
     (method: "face" | "fingerprint") => {
-      if (isSelecting) return;
+      if (isSelectingRef.current) return;
+      isSelectingRef.current = true;
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       setIsSelecting(true);
       setSelectedMethod(method);
+      if (__DEV__) console.log("[IdentityVerify] Method selected:", method);
       onSelectMethod(method);
-      requestAnimationFrame(() => {
-        setIsSelecting(false);
-      });
+      setTimeout(() => {
+        isSelectingRef.current = false;
+        if (mountedRef.current) setIsSelecting(false);
+      }, 0);
     },
-    [isSelecting, onSelectMethod]
+    [onSelectMethod]
   );
 
   useEffect(() => {
     if (!visible) {
+      isSelectingRef.current = false;
       setIsSelecting(false);
       setSelectedMethod(null);
+    } else {
+      preloadVerification();
     }
   }, [visible]);
 

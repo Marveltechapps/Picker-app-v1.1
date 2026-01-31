@@ -34,15 +34,7 @@ if (typeof window !== 'undefined') {
   setupWebErrorSuppression();
 }
 
-// Prevent native splash from auto-hiding until we're ready; force-hide after max delay so APK never freezes.
 SplashScreen.preventAutoHideAsync().catch(() => {});
-
-// Safety: force-hide native splash after 3s so release APK never sticks on white/splash screen.
-if (typeof setTimeout !== 'undefined') {
-  setTimeout(() => {
-    SplashScreen.hideAsync().catch(() => {});
-  }, 3000);
-}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -71,10 +63,12 @@ function RootLayoutNav() {
   // Setup push notifications when user is logged in (native platforms only)
   // Skip in Expo Go as push notifications are not supported
   useEffect(() => {
-    if (Platform.OS === 'web') return;
-    const isExpoGo =
-      typeof Constants !== 'undefined' &&
-      Constants?.executionEnvironment === 'storeClient';
+    // Push notifications are not supported on web
+    if (Platform.OS === 'web') {
+      return;
+    }
+
+    const isExpoGo = Constants.executionEnvironment === 'storeClient';
     if (isExpoGo) return;
 
     const setupPushNotifications = async () => {
@@ -123,16 +117,20 @@ function RootLayoutNav() {
 
   // Setup notification listeners (native platforms only)
   useEffect(() => {
-    if (isLoading) return;
-    if (Platform.OS === 'web') return;
-    const isExpoGo =
-      typeof Constants !== 'undefined' &&
-      Constants?.executionEnvironment === 'storeClient';
+    if (isLoading) {
+      return;
+    }
+
+    // Push notifications are not supported on web
+    if (Platform.OS === 'web') {
+      return;
+    }
+
+    const isExpoGo = Constants.executionEnvironment === 'storeClient';
     if (isExpoGo) return;
 
-    let cleanup: () => void = () => {};
-    try {
-      cleanup = setupNotificationListeners(
+    // Setup listeners for foreground and background notifications
+    const cleanup = setupNotificationListeners(
       // Notification received (foreground)
       (notification) => {
         try {
@@ -180,13 +178,9 @@ function RootLayoutNav() {
         }
       }
     );
-    } catch (err) {
-      if (__DEV__) {
-        console.warn('[App] Notification listeners setup failed:', err);
-      }
-    }
 
     // Check if app was opened from a notification (native platforms only)
+    // Skip in Expo Go
     if (Platform.OS !== 'web' && !isExpoGo) {
       getLastNotificationResponse().then((response) => {
         if (response) {
@@ -207,14 +201,12 @@ function RootLayoutNav() {
             }
           }
         }
-      }).catch(() => {});
+      }).catch(() => {
+        // Silently handle errors (method not available on web)
+      });
     }
 
-    return () => {
-      try {
-        cleanup();
-      } catch (_) {}
-    };
+    return cleanup;
   }, [isLoading, router, setNotifications]);
 
   useEffect(() => {
@@ -224,9 +216,12 @@ function RootLayoutNav() {
 
     const isSplashScreen = segments[0] === "splash";
     
-    // Hide native splash when we're not on the splash screen (or force-hide after 3s above)
+    // Only hide native splash when we're not on the splash screen
+    // This allows the custom splash screen to show first
     if (!isSplashScreen) {
-      SplashScreen.hideAsync().catch(() => {});
+      SplashScreen.hideAsync().catch(() => {
+        // Silently handle error
+      });
     }
     const inAuthFlow = segments[0] === "permissions" || segments[0] === "login" || segments[0] === "otp" || segments[0] === "profile" || segments[0] === "verification" || segments[0] === "documents" || segments[0] === "aadhar-upload" || segments[0] === "pan-upload" || segments[0] === "verification-loading" || segments[0] === "success" || segments[0] === "training" || segments[0] === "training-video" || segments[0] === "location-type" || segments[0] === "shift-selection" || segments[0] === "get-started" || segments[0] === "collect-device";
     const inTabs = segments[0] === "(tabs)";
@@ -272,11 +267,9 @@ function RootLayoutNav() {
   }, [hasCompletedPermissionOnboarding, hasCompletedLogin, hasCompletedProfile, hasCompletedVerification, hasCompletedDocuments, hasCompletedTraining, hasCompletedSetup, hasCompletedManagerOTP, isLoading, segments, router]);
 
   if (isLoading) {
-    const loadingColor =
-      colors?.primary?.[650] ?? colors?.primary?.[600] ?? '#5B4EFF';
     return (
       <View style={loadingStyles.loadingContainer}>
-        <ActivityIndicator size="large" color={loadingColor} />
+        <ActivityIndicator size="large" color={colors.primary[650]} />
       </View>
     );
   }

@@ -109,6 +109,7 @@
         "expo-build-properties",
         {
           "android": {
+            "minSdkVersion": 26,
             "extraProguardRules": "android-proguard-rules.pro"
           }
         }

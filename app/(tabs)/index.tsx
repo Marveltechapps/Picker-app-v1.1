@@ -86,14 +86,14 @@ export default function HomeScreen() {
   const handleIdentityMethodSelect = (method: "face" | "fingerprint") => {
     setVerificationMethod(method);
     setShowIdentityVerify(false);
-    // Short delay so identity sheet can start closing; reduces total wait vs 300ms
+    // Minimal delay so identity sheet starts closing; keeps flow snappy in Expo Go
     setTimeout(() => {
       if (method === "face") {
         setShowFaceVerify(true);
       } else {
         setShowFingerprintVerify(true);
       }
-    }, 100);
+    }, 50);
   };
 
   const handleVerificationSuccess = () => {
@@ -958,29 +958,33 @@ export default function HomeScreen() {
         }}
       />
 
-      <FaceVerifySheet
-        visible={showFaceVerify}
-        onSuccess={handleVerificationSuccess}
-        onClose={handleCloseSheet}
-        onBack={() => {
-          setShowFaceVerify(false);
-          setTimeout(() => {
-            setShowIdentityVerify(true);
-          }, 300);
-        }}
-      />
+      {showFaceVerify && (
+        <FaceVerifySheet
+          visible={showFaceVerify}
+          onSuccess={handleVerificationSuccess}
+          onClose={handleCloseSheet}
+          onBack={() => {
+            setShowFaceVerify(false);
+            setTimeout(() => {
+              setShowIdentityVerify(true);
+            }, 300);
+          }}
+        />
+      )}
 
-      <FingerprintVerifySheet
-        visible={showFingerprintVerify}
-        onSuccess={handleVerificationSuccess}
-        onClose={handleCloseSheet}
-        onBack={() => {
-          setShowFingerprintVerify(false);
-          setTimeout(() => {
-            setShowIdentityVerify(true);
-          }, 300);
-        }}
-      />
+      {showFingerprintVerify && (
+        <FingerprintVerifySheet
+          visible={showFingerprintVerify}
+          onSuccess={handleVerificationSuccess}
+          onClose={handleCloseSheet}
+          onBack={() => {
+            setShowFingerprintVerify(false);
+            setTimeout(() => {
+              setShowIdentityVerify(true);
+            }, 300);
+          }}
+        />
+      )}
 
       <ShiftSuccessSheet
         visible={showShiftSuccess}

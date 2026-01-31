@@ -60,10 +60,11 @@ export default function FaceVerifySheet({ visible, onSuccess, onClose, onBack }:
     visible,
     onStatusChange: () => {},
     onVerified: () => {
+      if (__DEV__) console.log('[FaceVerify] Verified');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setVerified(true);
       pulseAnim.stopAnimation();
-      setTimeout(() => onSuccess(), 800);
+      setTimeout(() => onSuccess(), 400);
     },
     onVerifyFailed: (err) => {
       // Removed failure alerts - verification happens automatically on face detection

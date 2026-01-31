@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { View, Text, StyleSheet, StatusBar, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Platform } from "react-native";
+import { View, Text, StyleSheet, StatusBar, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Platform, InteractionManager } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { ChevronLeft, LogOut, BookOpen } from "lucide-react-native";
 import { useVideoPlayer, VideoView } from "expo-video";
@@ -21,14 +21,24 @@ export default function TrainingVideoScreen() {
   const [progress, setProgress] = useState<number>(0);
   const [isComplete, setIsComplete] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
-  
+  const isMountedRef = useRef<boolean>(true);
+
   // Get video URL from centralized configuration
   const videoUrl = params.videoId ? getTrainingVideoUrl(params.videoId) : getTrainingVideoUrl("video1");
-  
+
   const player = useVideoPlayer(videoUrl, (player) => {
     player.loop = false;
     player.muted = false;
   });
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      try {
+        if (player.playing) player.pause();
+      } catch (_) {}
+    };
+  }, [player]);
 
   const savedProgress = params.videoId && params.videoId in trainingProgress 
     ? trainingProgress[params.videoId] ?? 0 
@@ -63,26 +73,42 @@ export default function TrainingVideoScreen() {
     }
   };
 
-  const handleContinue = async () => {
-    if (isComplete && params.videoId) {
-      setLoading(true);
-      await updateTrainingProgress(params.videoId, 100);
-      setLoading(false);
+  const navigateAfterVideoCleanup = (fn: () => void) => {
+    try {
+      if (player.playing) player.pause();
+    } catch (_) {}
+    InteractionManager.runAfterInteractions(() => {
+      if (!isMountedRef.current) return;
       try {
-        if (router.canGoBack()) {
-          router.back();
-        } else {
-          router.push("/training");
-        }
-      } catch (error) {
-        // Silently handle navigation error
+        fn();
+      } catch {
         try {
           router.push("/training");
         } catch {
-          // Fallback failed
+          // ignore
         }
       }
+    });
+  };
+
+  const handleContinue = async () => {
+    if (!isComplete || !params.videoId) return;
+    setLoading(true);
+    try {
+      await updateTrainingProgress(params.videoId, 100);
+    } catch (_) {
+      setLoading(false);
+      return;
     }
+    setLoading(false);
+    navigateAfterVideoCleanup(() => {
+      if (!isMountedRef.current) return;
+      if (router.canGoBack()) {
+        router.back();
+      } else {
+        router.push("/training");
+      }
+    });
   };
 
   const handleLogout = () => {
@@ -99,14 +125,14 @@ export default function TrainingVideoScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              if (player.playing) {
-                player.pause();
-              }
+              if (player.playing) player.pause();
               await logout();
-              router.replace("/login");
-            } catch (error) {
-              // Silently handle error
-            }
+              InteractionManager.runAfterInteractions(() => {
+                try {
+                  router.replace("/login");
+                } catch (_) {}
+              });
+            } catch (_) {}
           },
         },
       ],
@@ -148,24 +174,15 @@ export default function TrainingVideoScreen() {
       <StatusBar barStyle="dark-content" />
       
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={() => {
-            try {
-              if (router.canGoBack()) {
-                router.back();
-              } else {
-                router.push("/training");
-              }
-            } catch (error) {
-              // Silently handle navigation error
-              try {
-                router.push("/training");
-              } catch {
-                // Fallback failed
-              }
-            }
-          }}
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() =>
+            navigateAfterVideoCleanup(() => {
+              if (!isMountedRef.current) return;
+              if (router.canGoBack()) router.back();
+              else router.push("/training");
+            })
+          }
         >
           <ChevronLeft color="#111827" size={28} strokeWidth={2} />
         </TouchableOpacity>

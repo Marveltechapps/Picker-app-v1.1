@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { StyleSheet, Text, View, ScrollView, TouchableOpacity, StatusBar, Image, Platform } from "react-native";
+import React, { useState, useEffect, useRef } from "react";
+import { StyleSheet, Text, View, ScrollView, TouchableOpacity, StatusBar, Image, Platform, InteractionManager } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Bell, Zap, Target, AlertCircle, Smartphone, Clock, User, MapPin } from "lucide-react-native";
 import { useRouter } from "expo-router";
@@ -22,6 +22,7 @@ export default function GetStartedScreen() {
     requestPermission,
   } = useLocation();
   const [showGenerateOtp, setShowGenerateOtp] = useState<boolean>(false);
+  const navigatingRef = useRef<boolean>(false);
 
   useEffect(() => {
     const run = async () => {
@@ -56,9 +57,29 @@ export default function GetStartedScreen() {
     router.push({ pathname: "/collect-device", params: { otp } });
   };
 
+  const navigateToHome = () => {
+    if (navigatingRef.current) return;
+    navigatingRef.current = true;
+    InteractionManager.runAfterInteractions(() => {
+      try {
+        router.replace("/(tabs)");
+      } catch {
+        try {
+          router.replace("/(tabs)/" as any);
+        } catch {
+          try {
+            router.push("/(tabs)" as any);
+          } catch {
+            // ignore
+          }
+        }
+      }
+      navigatingRef.current = false;
+    });
+  };
+
   const handleDone = () => {
-    // Navigate to homepage after completing task
-    router.replace("/(tabs)");
+    navigateToHome();
   };
 
   return (
@@ -135,9 +156,9 @@ export default function GetStartedScreen() {
             <Text style={styles.shiftTime}>{shiftTime}</Text>
           </View>
 
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.startButton}
-            onPress={() => router.replace("/(tabs)")}
+            onPress={navigateToHome}
           >
             <Text style={styles.startButtonText}>START MY SHIFT</Text>
           </TouchableOpacity>

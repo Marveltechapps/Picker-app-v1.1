@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, Platform } from "react-native";
+import React, { useState, useRef } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, StatusBar, ScrollView, Platform, InteractionManager } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Smartphone, CheckCircle2, ChevronLeft } from "lucide-react-native";
@@ -9,11 +9,25 @@ export default function CollectDeviceScreen() {
   const router = useRouter();
   const { otp } = useLocalSearchParams();
   const [collected, setCollected] = useState<boolean>(false);
+  const navigatingRef = useRef<boolean>(false);
+
+  const navigateToHome = () => {
+    if (navigatingRef.current) return;
+    navigatingRef.current = true;
+    InteractionManager.runAfterInteractions(() => {
+      try {
+        router.replace("/(tabs)");
+      } catch (_) {
+        try {
+          router.push("/(tabs)" as any);
+        } catch (_) {}
+      }
+      navigatingRef.current = false;
+    });
+  };
 
   const handleComplete = () => {
-    if (collected) {
-      router.replace("/(tabs)");
-    }
+    if (collected) navigateToHome();
   };
 
   return (

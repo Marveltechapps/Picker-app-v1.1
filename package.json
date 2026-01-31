@@ -4,17 +4,13 @@
   "version": "1.0.0",
   "scripts": {
     "start": "npx expo start",
-    "start:clean": "npx expo start --clear",
     "start:web": "npx expo start --web --port 8082",
-    "start:web:clean": "npx expo start --web --port 8082 --clear",
     "start:android": "npx expo start --android",
     "start:ios": "npx expo start --ios",
     "start:tunnel": "npx expo start --tunnel",
     "lint": "expo lint",
     "android": "expo run:android",
-    "ios": "expo run:ios",
-    "eas": "npx eas-cli",
-    "build:android": "npx eas-cli build --platform android --profile preview"
+    "ios": "expo run:ios"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -75,7 +71,6 @@
     "@expo/ngrok": "^4.1.0",
     "@types/react": "~19.1.0",
     "babel-preset-expo": "~54.0.10",
-    "eas-cli": "^14.0.0",
     "eslint": "^9.31.0",
     "eslint-config-expo": "~10.0.0",
     "typescript": "~5.9.2"

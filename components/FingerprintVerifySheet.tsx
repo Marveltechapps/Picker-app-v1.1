@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, Animated, Platform, Alert, ActivityIndicator, InteractionManager } from "react-native";
+import { View, Text, StyleSheet, Animated, Platform, Alert, ActivityIndicator } from "react-native";
 import BottomSheetModal from "./BottomSheetModal";
 import { Fingerprint, Check } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
@@ -30,12 +30,11 @@ export default function FingerprintVerifySheet({ visible, onSuccess, onClose, on
     reset,
   } = useBiometricAuth({
     onSuccess: () => {
+      if (__DEV__) console.log('[FingerprintVerify] Verified');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setVerified(true);
       setError(null);
-      setTimeout(() => {
-        onSuccess();
-      }, 800);
+      setTimeout(() => onSuccess(), 400);
     },
     onError: (err) => {
       // Don't show error for user cancellation
@@ -83,24 +82,21 @@ export default function FingerprintVerifySheet({ visible, onSuccess, onClose, on
     }
   }, [isAuthenticating, scaleAnim]);
 
-  // Auto-trigger immediately after sheet is ready (no delay for instant response)
+  // Auto-trigger immediately when ready (no InteractionManager delay for faster UX)
   useEffect(() => {
     if (!visible || !isAvailable || verified || isAuthenticating || hasAutoTriggered || isChecking) {
       return;
     }
     let cancelled = false;
-    const task = InteractionManager.runAfterInteractions(() => {
-      const timer = setTimeout(() => {
-        if (cancelled) return;
-        setError(null);
-        setHasAutoTriggered(true);
-        authenticate().catch(() => {});
-      }, 0);
-      return () => clearTimeout(timer);
-    });
+    const id = setTimeout(() => {
+      if (cancelled) return;
+      setError(null);
+      setHasAutoTriggered(true);
+      authenticate().catch(() => {});
+    }, 0);
     return () => {
       cancelled = true;
-      task.cancel();
+      clearTimeout(id);
     };
   }, [visible, isAvailable, verified, isAuthenticating, hasAutoTriggered, isChecking, authenticate]);
 

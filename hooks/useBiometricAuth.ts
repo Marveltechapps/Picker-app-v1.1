@@ -1,18 +1,16 @@
 /**
  * useBiometricAuth Hook
- * 
- * React hook for real device biometric authentication
- * Handles:
- * - Hardware availability checks
- * - Enrollment status
- * - Authentication flow
- * - Error handling
- * - Loading states
+ *
+ * Real device biometric authentication. Optimized for Expo Go:
+ * - Uses preloaded cache when available (instant isAvailable)
+ * - No double rAF delay; runs check immediately
+ * - Proper async handling (no await in onPress path)
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
-import biometricService, { type BiometricType, type BiometricAuthResult } from '@/services/biometric.service';
+import biometricService, { type BiometricType } from '@/services/biometric.service';
+import { getCachedBiometric } from '@/utils/verificationPreload';
 
 export interface UseBiometricAuthOptions {
   /** Called when authentication succeeds */
@@ -57,12 +55,13 @@ export function useBiometricAuth(options: UseBiometricAuthOptions = {}): UseBiom
     disableDeviceFallback = false,
   } = options;
 
-  const [isAvailable, setIsAvailable] = useState(false);
-  const [isChecking, setIsChecking] = useState(false);
-  const [biometricType, setBiometricType] = useState<BiometricType>({
-    available: false,
-    type: 'none',
-  });
+  // Use cached result for instant isAvailable when preload ran
+  const cached = getCachedBiometric();
+  const [isAvailable, setIsAvailable] = useState(cached?.available ?? false);
+  const [isChecking, setIsChecking] = useState(!cached);
+  const [biometricType, setBiometricType] = useState<BiometricType>(
+    cached ?? { available: false, type: 'none' }
+  );
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -125,6 +124,7 @@ export function useBiometricAuth(options: UseBiometricAuthOptions = {}): UseBiom
     }
 
     try {
+      if (__DEV__) console.log('[useBiometricAuth] Authenticate starting');
       setIsAuthenticating(true);
       setError(null);
 
@@ -204,13 +204,12 @@ export function useBiometricAuth(options: UseBiometricAuthOptions = {}): UseBiom
     setError(null);
   }, []);
 
-  // Check availability after first paint so mount stays fast (Expo Go)
+  // Run check immediately (no rAF delay). Skip if cache hit from preload.
   useEffect(() => {
-    const id = requestAnimationFrame(() => {
-      requestAnimationFrame(() => checkAvailability());
-    });
-    return () => cancelAnimationFrame(id);
-  }, [checkAvailability]);
+    if (cached) return;
+    const id = setTimeout(() => checkAvailability().catch(() => {}), 0);
+    return () => clearTimeout(id);
+  }, [checkAvailability, cached]);
 
   // Handle app state changes
   useEffect(() => {

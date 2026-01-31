@@ -33,6 +33,15 @@
 -keepclassmembers class expo.modules.imagepicker.** { *; }
 -dontwarn expo.modules.imagepicker.**
 
+# Expo Video (prevents native crash on navigation from training-video in release APK)
+-keep class expo.modules.video.** { *; }
+-keep class expo.modules.av.** { *; }
+-dontwarn expo.modules.video.**
+
+# React Native Gesture Handler (prevents touch/navigation crash in release APK)
+-keep class com.swmansion.gesturehandler.** { *; }
+-dontwarn com.swmansion.gesturehandler.**
+
 # AsyncStorage / React Native async storage
 -keep class com.reactnativecommunity.asyncstorage.** { *; }
 
