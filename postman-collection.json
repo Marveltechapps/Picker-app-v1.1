@@ -1,0 +1,1113 @@
+{
+  "info": {
+    "name": "Picker App API",
+    "description": "Generated from backend-workflow.yaml & application-spec.yaml. Base URL: http://localhost:3000",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "phone", "value": "9876543210" },
+    { "key": "token", "value": "" },
+    { "key": "userId", "value": "" },
+    { "key": "bankAccountId", "value": "" },
+    { "key": "accountId", "value": "" },
+    { "key": "transactionId", "value": "" },
+    { "key": "notificationId", "value": "" },
+    { "key": "sampleId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/health",
+            "description": "Return { ok: true }"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Response has ok', () => { const j = pm.response.json(); pm.expect(j).to.have.property('ok'); pm.expect(j.ok).to.eql(true); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Send OTP",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{phone}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/send-otp",
+            "description": "Send OTP to phone. Body: { phone }. Success: 200 { success: true, message }. Failure: 400 { success: false, message, errorCode? }. Rate limit or invalid number returns 400."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const j = pm.response.json();",
+                  "pm.test('Response has success', () => pm.expect(j).to.have.property('success'));",
+                  "pm.test('Status 200 on success', function() { if (j.success) pm.response.to.have.status(200); });",
+                  "pm.test('Status 400 on failure', function() { if (!j.success) pm.response.to.have.status(400); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resend OTP",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{phone}}\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/resend-otp",
+            "description": "Resend OTP to same phone. Same contract as Send OTP. Use after send-otp if user did not receive SMS or OTP expired."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const j = pm.response.json();",
+                  "pm.test('Response has success', () => pm.expect(j).to.have.property('success'));",
+                  "pm.test('Status 200 on success', function() { if (j.success) pm.response.to.have.status(200); });",
+                  "pm.test('Status 400 on failure', function() { if (!j.success) pm.response.to.have.status(400); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify OTP",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"{{phone}}\",\n  \"otp\": \"1234\"\n}"
+            },
+            "url": "{{baseUrl}}/auth/verify-otp",
+            "description": "Verify OTP. Body: { phone, otp }. Success: 200 { success: true, message, token?, user? }. Saves token and userId to collection variables for authenticated requests."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const j = pm.response.json();",
+                  "pm.test('Response has success', () => pm.expect(j).to.have.property('success'));",
+                  "pm.test('Status 200 on success', function() { if (j.success) pm.response.to.have.status(200); });",
+                  "pm.test('Status 400 on failure', function() { if (!j.success) pm.response.to.have.status(400); });",
+                  "if (j.token) { pm.collectionVariables.set('token', j.token); }",
+                  "if (j.user && j.user.id) { pm.collectionVariables.set('userId', j.user.id); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Push",
+      "item": [
+        {
+          "name": "Register push token",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"ExponentPushToken[xxx]\",\n  \"platform\": \"android\",\n  \"userId\": \"{{userId}}\",\n  \"deviceId\": \"device-001\"\n}"
+            },
+            "url": "{{baseUrl}}/api/push-tokens",
+            "description": "Upsert device token by userId/deviceId. Auth not required."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 or 201', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "pm.test('Response body exists', () => pm.response.json());"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "User",
+      "item": [
+        {
+          "name": "Update profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-User-Id", "value": "{{userId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Ramesh Kumar\",\n  \"age\": 28,\n  \"gender\": \"male\",\n  \"email\": \"ramesh@example.com\",\n  \"phone\": \"9876543210\",\n  \"photoUri\": \"https://example.com/photo.jpg\"\n}"
+            },
+            "url": "{{baseUrl}}/users/profile",
+            "description": "Profile upsert. Auth required."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Has success', () => pm.expect(j).to.have.property('success'));",
+                  "pm.test('Has data when success', () => { if (j.success) pm.expect(j).to.have.property('data'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Set location type",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-User-Id", "value": "{{userId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"locationType\": \"warehouse\"\n}"
+            },
+            "url": "{{baseUrl}}/users/location-type",
+            "description": "warehouse | darkstore. Auth required."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Response has success', () => { const j = pm.response.json(); pm.expect(j).to.have.property('success'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Set UPI",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-User-Id", "value": "{{userId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"upiId\": \"ramesh@paytm\",\n  \"upiName\": \"Ramesh Kumar\"\n}"
+            },
+            "url": "{{baseUrl}}/users/upi",
+            "description": "UPI ID and name. Auth required."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has success', () => { const j = pm.response.json(); pm.expect(j).to.have.property('success'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Documents",
+      "item": [
+        {
+          "name": "Upload document",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-User-Id", "value": "{{userId}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "docType", "value": "aadhar", "type": "text" },
+                { "key": "side", "value": "front", "type": "text" },
+                { "key": "file", "type": "file", "src": "" }
+              ]
+            },
+            "url": "{{baseUrl}}/documents/upload",
+            "description": "Multipart: docType (aadhar|pan), side (front|back), file. Auth required."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 or 201', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const j = pm.response.json();",
+                  "pm.test('Has success', () => pm.expect(j).to.have.property('success'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "List documents",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-User-Id", "value": "{{userId}}" }
+            ],
+            "url": "{{baseUrl}}/documents",
+            "description": "User documents (aadhar/pan front/back). Auth required."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Has success', () => pm.expect(j).to.have.property('success'));",
+                  "pm.test('Has documents', () => pm.expect(j).to.have.property('documents'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Verification",
+      "item": [
+        {
+          "name": "Verify face",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-User-Id", "value": "{{userId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image\": \"base64encodedimagedata\"\n}"
+            },
+            "url": "{{baseUrl}}/verify/face",
+            "description": "Face image (multipart or JSON base64). Auth required."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Has success', () => pm.expect(j).to.have.property('success'));",
+                  "pm.test('Has verified', () => pm.expect(j).to.have.property('verified'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Training",
+      "item": [
+        {
+          "name": "Get training progress",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-User-Id", "value": "{{userId}}" }
+            ],
+            "url": "{{baseUrl}}/training/progress",
+            "description": "Current user training progress (video1..video4). Auth required."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Has success', () => pm.expect(j).to.have.property('success'));",
+                  "pm.test('Has data', () => pm.expect(j).to.have.property('data'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update training progress",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-User-Id", "value": "{{userId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"video1\": 100,\n  \"video2\": 50,\n  \"video3\": 0,\n  \"video4\": 0\n}"
+            },
+            "url": "{{baseUrl}}/training/progress",
+            "description": "video1..video4 progress 0-100. Auth required."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Has success', () => pm.expect(j).to.have.property('success'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Shifts",
+      "item": [
+        {
+          "name": "Get available shifts",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-User-Id", "value": "{{userId}}" }
+            ],
+            "url": "{{baseUrl}}/shifts/available",
+            "description": "List shifts by locationType/date. Auth required."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Has success', () => pm.expect(j).to.have.property('success'));",
+                  "pm.test('Has data array', () => { pm.expect(j).to.have.property('data'); pm.expect(j.data).to.be.an('array'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Select shifts",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-User-Id", "value": "{{userId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"selectedShifts\": [\n    { \"id\": \"s1\", \"name\": \"Morning\", \"time\": \"6 AM - 2 PM\" },\n    { \"id\": \"s2\", \"name\": \"Evening\", \"time\": \"2 PM - 10 PM\" }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/shifts/select",
+            "description": "Persist user shift preferences. Auth required."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has success', () => { const j = pm.response.json(); pm.expect(j).to.have.property('success'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Start shift",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-User-Id", "value": "{{userId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"location\": { \"latitude\": 13.0827, \"longitude\": 80.2707 }\n}"
+            },
+            "url": "{{baseUrl}}/shifts/start",
+            "description": "Punch-in with optional location. Auth required."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 or 400', () => pm.expect(pm.response.code).to.be.oneOf([200, 400]));",
+                  "const j = pm.response.json();",
+                  "pm.test('Response has success', () => pm.expect(j).to.have.property('success'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "End shift",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-User-Id", "value": "{{userId}}" }
+            ],
+            "url": "{{baseUrl}}/shifts/end",
+            "description": "Punch-out. Auth required."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 or 400', () => pm.expect(pm.response.code).to.be.oneOf([200, 400]));",
+                  "const j = pm.response.json();",
+                  "pm.test('Response has success', () => pm.expect(j).to.have.property('success'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Attendance",
+      "item": [
+        {
+          "name": "Attendance summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-User-Id", "value": "{{userId}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/attendance/summary?month=1&year=2025",
+              "host": ["{{baseUrl}}"],
+              "path": ["attendance", "summary"],
+              "query": [
+                { "key": "month", "value": "1" },
+                { "key": "year", "value": "2025" }
+              ]
+            },
+            "description": "Query month, year. Returns details/OT/history. Auth required."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Has success', () => pm.expect(j).to.have.property('success'));",
+                  "pm.test('Has data', () => pm.expect(j).to.have.property('data'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Wallet",
+      "item": [
+        {
+          "name": "Get balance",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-User-Id", "value": "{{userId}}" }
+            ],
+            "url": "{{baseUrl}}/wallet/balance",
+            "description": "availableBalance, pendingBalance, totalEarnings, currency. Auth required."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Has success', () => pm.expect(j).to.have.property('success'));",
+                  "pm.test('Has data', () => pm.expect(j).to.have.property('data'));",
+                  "if (j.data) { pm.test('Data has balance fields', () => { pm.expect(j.data).to.have.property('availableBalance'); pm.expect(j.data).to.have.property('currency'); }); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Withdraw",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-User-Id", "value": "{{userId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 500,\n  \"bankAccountId\": \"{{bankAccountId}}\",\n  \"idempotencyKey\": \"withdraw-001\"\n}"
+            },
+            "url": "{{baseUrl}}/wallet/withdraw",
+            "description": "amount, bankAccountId required; idempotencyKey optional. Auth required."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 or 400', () => pm.expect(pm.response.code).to.be.oneOf([200, 400]));",
+                  "const j = pm.response.json();",
+                  "pm.test('Response has success', () => pm.expect(j).to.have.property('success'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Transaction history",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-User-Id", "value": "{{userId}}" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/wallet/history?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["wallet", "history"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "10" },
+                { "key": "type", "value": "credit" },
+                { "key": "status", "value": "completed" },
+                { "key": "startDate", "value": "" },
+                { "key": "endDate", "value": "" }
+              ]
+            },
+            "description": "Query: page, limit, type, status, startDate, endDate. Auth required."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Has success', () => pm.expect(j).to.have.property('success'));",
+                  "pm.test('Has data with transactions and pagination', () => { pm.expect(j.data).to.have.property('transactions'); pm.expect(j.data).to.have.property('pagination'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get transaction by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-User-Id", "value": "{{userId}}" }
+            ],
+            "url": "{{baseUrl}}/wallet/transactions/{{transactionId}}",
+            "description": "Single transaction. Auth required. Set transactionId variable from history."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 or 404', () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));",
+                  "if (pm.response.code === 200) { const j = pm.response.json(); pm.test('Has success', () => pm.expect(j).to.have.property('success')); pm.test('Has data', () => pm.expect(j).to.have.property('data')); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Bank",
+      "item": [
+        {
+          "name": "Verify bank",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-User-Id", "value": "{{userId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountHolder\": \"Ramesh Kumar\",\n  \"accountNumber\": \"123456789012\",\n  \"ifscCode\": \"HDFC0001234\"\n}"
+            },
+            "url": "{{baseUrl}}/bank/verify",
+            "description": "Verify with gateway. accountHolder, accountNumber, ifscCode. Auth required."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Has success', () => pm.expect(j).to.have.property('success'));",
+                  "pm.test('Has verified', () => pm.expect(j).to.have.property('verified'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "List bank accounts",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-User-Id", "value": "{{userId}}" }
+            ],
+            "url": "{{baseUrl}}/bank/accounts",
+            "description": "List user bank accounts. Auth required."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Has success', () => pm.expect(j).to.have.property('success'));",
+                  "pm.test('Has data array', () => { pm.expect(j).to.have.property('data'); pm.expect(j.data).to.be.an('array'); });",
+                  "if (j.data && j.data[0] && j.data[0]._id) { pm.collectionVariables.set('bankAccountId', j.data[0]._id); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create bank account",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-User-Id", "value": "{{userId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountHolder\": \"Ramesh Kumar\",\n  \"accountNumber\": \"123456789012\",\n  \"ifscCode\": \"HDFC0001234\",\n  \"bankName\": \"HDFC Bank\",\n  \"branch\": \"Chennai Main\"\n}"
+            },
+            "url": "{{baseUrl}}/bank/accounts",
+            "description": "Verify then save. Auth required."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 or 201', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const j = pm.response.json();",
+                  "pm.test('Has success', () => pm.expect(j).to.have.property('success'));",
+                  "if (j.data && j.data._id) { pm.collectionVariables.set('bankAccountId', j.data._id); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update bank account",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-User-Id", "value": "{{userId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountHolder\": \"Ramesh Kumar\",\n  \"accountNumber\": \"123456789012\",\n  \"ifscCode\": \"HDFC0001234\",\n  \"bankName\": \"HDFC Bank\",\n  \"branch\": \"Chennai Adyar\"\n}"
+            },
+            "url": "{{baseUrl}}/bank/accounts/{{accountId}}",
+            "description": "Update account. Auth required. Use accountId from list."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 or 404', () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));",
+                  "if (pm.response.code === 200) { const j = pm.response.json(); pm.test('Has success', () => pm.expect(j).to.have.property('success')); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Set default bank account",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-User-Id", "value": "{{userId}}" }
+            ],
+            "url": "{{baseUrl}}/bank/accounts/{{accountId}}/set-default",
+            "description": "Set isDefault. Auth required."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 or 404', () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));",
+                  "if (pm.response.code === 200) { const j = pm.response.json(); pm.test('Has success', () => pm.expect(j).to.have.property('success')); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Delete bank account",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-User-Id", "value": "{{userId}}" }
+            ],
+            "url": "{{baseUrl}}/bank/accounts/{{accountId}}/delete",
+            "description": "Soft delete or remove. Auth required."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 or 404', () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));",
+                  "if (pm.response.code === 200) { const j = pm.response.json(); pm.test('Has success', () => pm.expect(j).to.have.property('success')); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "List notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-User-Id", "value": "{{userId}}" }
+            ],
+            "url": "{{baseUrl}}/notifications",
+            "description": "List with pagination. Auth required."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Has success', () => pm.expect(j).to.have.property('success'));",
+                  "pm.test('Has data', () => pm.expect(j).to.have.property('data'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mark all read",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-User-Id", "value": "{{userId}}" }
+            ],
+            "url": "{{baseUrl}}/notifications/read-all",
+            "description": "Bulk mark read. Auth required."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has success', () => { const j = pm.response.json(); pm.expect(j).to.have.property('success'); });"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mark one read",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-User-Id", "value": "{{userId}}" }
+            ],
+            "url": "{{baseUrl}}/notifications/{{notificationId}}/read",
+            "description": "Mark one as read. Auth required. Set notificationId from list."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 or 404', () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));",
+                  "if (pm.response.code === 200) { const j = pm.response.json(); pm.test('Has success', () => pm.expect(j).to.have.property('success')); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "FAQs",
+      "item": [
+        {
+          "name": "List FAQs",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/faqs",
+            "description": "FAQ list. Auth not required."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Has success', () => pm.expect(j).to.have.property('success'));",
+                  "pm.test('Has data', () => pm.expect(j).to.have.property('data'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Support",
+      "item": [
+        {
+          "name": "List tickets",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-User-Id", "value": "{{userId}}" }
+            ],
+            "url": "{{baseUrl}}/support/tickets",
+            "description": "List user tickets. Auth required."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Has success', () => pm.expect(j).to.have.property('success'));",
+                  "pm.test('Has data', () => pm.expect(j).to.have.property('data'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "X-User-Id", "value": "{{userId}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category\": \"payout\",\n  \"subject\": \"Withdrawal delay\",\n  \"message\": \"My withdrawal from last week is still pending.\"\n}"
+            },
+            "url": "{{baseUrl}}/support/tickets",
+            "description": "category, subject, message. Auth required."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 or 201', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const j = pm.response.json();",
+                  "pm.test('Has success', () => pm.expect(j).to.have.property('success'));",
+                  "pm.test('Has data', () => pm.expect(j).to.have.property('data'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Samples",
+      "item": [
+        {
+          "name": "Get all samples",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/samples",
+            "description": "Existing sample CRUD. No auth."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const j = pm.response.json();",
+                  "pm.test('Has success', () => pm.expect(j).to.have.property('success'));",
+                  "pm.test('Has data', () => pm.expect(j).to.have.property('data'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create sample",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Sample\",\n  \"description\": \"Created from Postman\"\n}"
+            },
+            "url": "{{baseUrl}}/api/samples",
+            "description": "Create sample. No auth."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 or 201', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+                  "const j = pm.response.json();",
+                  "pm.test('Has success', () => pm.expect(j).to.have.property('success'));",
+                  "if (j.data && j.data._id) { pm.collectionVariables.set('sampleId', j.data._id); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get sample by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/samples/{{sampleId}}",
+            "description": "Get sample by id. No auth."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status is 200 or 404', () => pm.expect(pm.response.code).to.be.oneOf([200, 404]));",
+                  "if (pm.response.code === 200) { const j = pm.response.json(); pm.test('Has success', () => pm.expect(j).to.have.property('success')); pm.test('Has data', () => pm.expect(j).to.have.property('data')); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

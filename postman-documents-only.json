@@ -1,0 +1,74 @@
+{
+  "info": {
+    "name": "Documents API (S3 upload)",
+    "description": "Test document upload (S3) and list. Set baseUrl and token (or userId for X-User-Id) in collection variables.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3000" },
+    { "key": "token", "value": "" },
+    { "key": "userId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Upload document",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "X-User-Id", "value": "{{userId}}" }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            { "key": "docType", "value": "aadhar", "type": "text", "description": "aadhar or pan" },
+            { "key": "side", "value": "front", "type": "text", "description": "front or back" },
+            { "key": "file", "type": "file", "src": "", "description": "Select an image file" }
+          ]
+        },
+        "url": "{{baseUrl}}/documents/upload",
+        "description": "Uploads file to S3 and stores the S3 URL in MongoDB. Requires auth (Bearer token or X-User-Id)."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200 or 201', () => pm.expect(pm.response.code).to.be.oneOf([200, 201]));",
+              "const j = pm.response.json();",
+              "pm.test('Has success', () => pm.expect(j).to.have.property('success'));",
+              "if (j.success && j.documentUrl) pm.test('documentUrl is S3 URL', () => pm.expect(j.documentUrl).to.include('s3'));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    },
+    {
+      "name": "List documents",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{token}}" },
+          { "key": "X-User-Id", "value": "{{userId}}" }
+        ],
+        "url": "{{baseUrl}}/documents",
+        "description": "Returns user documents (aadhar/pan front/back) with stored URLs (S3 links)."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+              "const j = pm.response.json();",
+              "pm.test('Has success', () => pm.expect(j).to.have.property('success'));",
+              "pm.test('Has documents', () => pm.expect(j).to.have.property('documents'));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ]
+    }
+  ]
+}

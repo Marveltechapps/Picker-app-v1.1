@@ -16,6 +16,7 @@ android/
 # APK builds (do not commit to repo)
 *.apk
 apk/*.apk
+frontend/apk/*.apk
 *.orig.*
 *.jks
 *.p8

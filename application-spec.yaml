@@ -1,0 +1,756 @@
+# Picker App – Full Application Specification
+# Derived from frontend (@frontend) logic, endpoints, and schemas.
+# Backend: Express (sample routes included).
+
+openapi: "3.0.3"
+info:
+  title: Picker App API
+  description: Warehouse/Darkstore picker app – auth, profile, documents, wallet, attendance, location.
+  version: 1.0.0
+
+servers:
+  - url: "${EXPO_PUBLIC_API_URL:-https://api.example.com}"
+    description: API base URL (frontend uses EXPO_PUBLIC_API_URL)
+
+tags:
+  - name: Health
+  - name: Auth
+  - name: Profile
+  - name: Documents
+  - name: Bank
+  - name: Wallet
+  - name: Verification
+  - name: Push
+  - name: Samples
+
+# =============================================================================
+# SECURITY (JWT – frontend apiClient sends Bearer token from AsyncStorage)
+# =============================================================================
+security:
+  - bearerAuth: []
+securitySchemes:
+  bearerAuth:
+    type: http
+    scheme: bearer
+    bearerFormat: JWT
+
+# =============================================================================
+# PATHS (Endpoints used or expected by frontend)
+# =============================================================================
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+
+  # ---------------------------------------------------------------------------
+  # Auth (frontend: login → OTP → profile; no backend endpoints called yet)
+  # ---------------------------------------------------------------------------
+  # POST /auth/send-otp   { phone: string }  → { success, message }
+  # POST /auth/verify-otp { phone: string, otp: string } → { success, token, user }
+  # (Placeholder – frontend currently uses local state + AsyncStorage)
+
+  # ---------------------------------------------------------------------------
+  # Bank (frontend: bank.service.ts)
+  # ---------------------------------------------------------------------------
+  /bank/verify:
+    post:
+      tags: [Bank]
+      summary: Verify bank account details
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BankVerificationRequest"
+      responses:
+        "200":
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BankVerificationResponse"
+
+  /bank/accounts:
+    get:
+      tags: [Bank]
+      summary: Get saved bank accounts
+      responses:
+        "200":
+          description: List of saved bank accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SavedBankAccount"
+    post:
+      tags: [Bank]
+      summary: Save verified bank account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BankAccountDetails"
+      responses:
+        "200":
+          description: Saved account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedBankAccount"
+
+  /bank/accounts/{accountId}:
+    put:
+      tags: [Bank]
+      summary: Update bank account
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BankAccountDetails"
+      responses:
+        "200":
+          description: Updated account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedBankAccount"
+
+  /bank/accounts/{accountId}/set-default:
+    put:
+      tags: [Bank]
+      summary: Set default bank account
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody: {}
+      responses:
+        "200":
+          description: Updated default account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedBankAccount"
+
+  /bank/accounts/{accountId}/delete:
+    post:
+      tags: [Bank]
+      summary: Delete bank account
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Deleted
+
+  # ---------------------------------------------------------------------------
+  # Wallet (frontend: wallet.service.ts)
+  # ---------------------------------------------------------------------------
+  /wallet/balance:
+    get:
+      tags: [Wallet]
+      summary: Get wallet balance
+      responses:
+        "200":
+          description: Wallet balance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WalletBalance"
+
+  /wallet/withdraw:
+    post:
+      tags: [Wallet]
+      summary: Initiate withdrawal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WithdrawRequest"
+      responses:
+        "200":
+          description: Withdrawal result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WithdrawResponse"
+
+  /wallet/history:
+    get:
+      tags: [Wallet]
+      summary: Get transaction history
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer }
+        - name: limit
+          in: query
+          schema: { type: integer }
+        - name: type
+          in: query
+          schema: { type: string, enum: [credit, debit] }
+        - name: status
+          in: query
+          schema: { type: string, enum: [pending, processing, completed, failed] }
+        - name: startDate
+          in: query
+          schema: { type: string, format: date-time }
+        - name: endDate
+          in: query
+          schema: { type: string, format: date-time }
+      responses:
+        "200":
+          description: Paginated transactions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionHistoryResponse"
+
+  /wallet/transactions/{transactionId}:
+    get:
+      tags: [Wallet]
+      summary: Get transaction by ID
+      parameters:
+        - name: transactionId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Single transaction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transaction"
+
+  # ---------------------------------------------------------------------------
+  # Face verification (frontend: faceVerification.service.ts)
+  # ---------------------------------------------------------------------------
+  /verify/face:
+    post:
+      tags: [Verification]
+      summary: Verify face (image upload or base64)
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                face:
+                  type: string
+                  format: binary
+          application/json:
+            schema:
+              type: object
+              properties:
+                image: { type: string, description: base64 image }
+      responses:
+        "200":
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerifyFaceResult"
+
+  # ---------------------------------------------------------------------------
+  # Documents (frontend: documentService.ts – placeholder; no real endpoint yet)
+  # ---------------------------------------------------------------------------
+  /documents/upload:
+    post:
+      tags: [Documents]
+      summary: Upload document (Aadhar/PAN front/back)
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                docType: { type: string, enum: [aadhar, pan] }
+                side: { type: string, enum: [front, back] }
+                file: { type: string, format: binary }
+      responses:
+        "200":
+          description: Upload result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentUploadResponse"
+
+  /documents:
+    get:
+      tags: [Documents]
+      summary: Fetch user documents
+      responses:
+        "200":
+          description: User documents
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentFetchResponse"
+
+  # ---------------------------------------------------------------------------
+  # Push tokens (frontend: notificationService.sendTokenToBackend)
+  # ---------------------------------------------------------------------------
+  /api/push-tokens:
+    post:
+      tags: [Push]
+      summary: Register push notification token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, platform]
+              properties:
+                token: { type: string }
+                userId: { type: string }
+                platform: { type: string, enum: [ios, android, web] }
+                deviceId: { type: string }
+      responses:
+        "200":
+          description: Token registered
+
+  # ---------------------------------------------------------------------------
+  # Backend sample routes (existing)
+  # ---------------------------------------------------------------------------
+  /api/samples:
+    get:
+      tags: [Samples]
+      summary: Get all samples
+      responses:
+        "200":
+          description: List of samples
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Sample"
+    post:
+      tags: [Samples]
+      summary: Create sample
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SampleInput"
+      responses:
+        "201":
+          description: Created sample
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    $ref: "#/components/schemas/Sample"
+
+  /api/samples/{id}:
+    get:
+      tags: [Samples]
+      summary: Get sample by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Sample
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    $ref: "#/components/schemas/Sample"
+
+# =============================================================================
+# COMPONENTS / SCHEMAS (from frontend types + backend model)
+# =============================================================================
+components:
+  schemas:
+    # ----- Auth / Profile (authContext.tsx) -----
+    PermissionStatus:
+      type: string
+      enum: [pending, allowed, denied]
+
+    PermissionsState:
+      type: object
+      properties:
+        pushNotifications: { $ref: "#/components/schemas/PermissionStatus" }
+        camera: { $ref: "#/components/schemas/PermissionStatus" }
+        battery: { $ref: "#/components/schemas/PermissionStatus" }
+        location: { $ref: "#/components/schemas/PermissionStatus" }
+        backgroundLocation: { $ref: "#/components/schemas/PermissionStatus" }
+
+    UserProfile:
+      type: object
+      required: [name, age, gender]
+      properties:
+        name: { type: string }
+        age: { type: number }
+        gender: { type: string, enum: [male, female] }
+        photoUri: { type: string }
+        email: { type: string }
+
+    DocumentUploads:
+      type: object
+      properties:
+        aadhar:
+          type: object
+          properties:
+            front: { type: string, nullable: true }
+            back: { type: string, nullable: true }
+        pan:
+          type: object
+          properties:
+            front: { type: string, nullable: true }
+            back: { type: string, nullable: true }
+
+    TrainingProgress:
+      type: object
+      properties:
+        video1: { type: number }
+        video2: { type: number }
+        video3: { type: number }
+        video4: { type: number }
+
+    LocationType:
+      type: string
+      enum: [warehouse, darkstore]
+      nullable: true
+
+    ShiftSelection:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        time: { type: string }
+
+    NotificationType:
+      type: string
+      enum: [payout, order, shift, training, milestone, bonus, update]
+
+    Notification:
+      type: object
+      properties:
+        id: { type: string }
+        type: { $ref: "#/components/schemas/NotificationType" }
+        title: { type: string }
+        description: { type: string }
+        timestamp: { type: string }
+        isRead: { type: boolean }
+
+    # ----- Bank (bank.service.ts) -----
+    BankAccountDetails:
+      type: object
+      required: [accountHolder, accountNumber, ifscCode]
+      properties:
+        accountHolder: { type: string }
+        accountNumber: { type: string }
+        ifscCode: { type: string }
+        bankName: { type: string }
+        branch: { type: string }
+
+    BankVerificationRequest:
+      type: object
+      required: [accountHolder, accountNumber, ifscCode]
+      properties:
+        accountHolder: { type: string }
+        accountNumber: { type: string }
+        ifscCode: { type: string }
+        bankName: { type: string }
+        branch: { type: string }
+
+    BankVerificationResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        verified: { type: boolean }
+        bankAccountId: { type: string }
+        bankName: { type: string }
+        branch: { type: string }
+        message: { type: string }
+        error: { type: string }
+
+    SavedBankAccount:
+      type: object
+      properties:
+        id: { type: string }
+        accountHolder: { type: string }
+        accountNumber: { type: string }
+        ifscCode: { type: string }
+        bankName: { type: string }
+        branch: { type: string }
+        isVerified: { type: boolean }
+        isDefault: { type: boolean }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+
+    # ----- Wallet (wallet.service.ts) -----
+    WalletBalance:
+      type: object
+      properties:
+        availableBalance: { type: number }
+        pendingBalance: { type: number }
+        totalEarnings: { type: number }
+        currency: { type: string }
+
+    WithdrawRequest:
+      type: object
+      required: [amount, bankAccountId]
+      properties:
+        amount: { type: number }
+        bankAccountId: { type: string }
+        idempotencyKey: { type: string }
+
+    WithdrawResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        transactionId: { type: string }
+        amount: { type: number }
+        status: { type: string, enum: [pending, processing, completed, failed] }
+        message: { type: string }
+        error: { type: string }
+        estimatedCompletionTime: { type: string }
+
+    TransactionType:
+      type: string
+      enum: [credit, debit]
+
+    TransactionStatus:
+      type: string
+      enum: [pending, processing, completed, failed]
+
+    Transaction:
+      type: object
+      properties:
+        id: { type: string }
+        type: { $ref: "#/components/schemas/TransactionType" }
+        amount: { type: number }
+        status: { $ref: "#/components/schemas/TransactionStatus" }
+        description: { type: string }
+        referenceId: { type: string }
+        createdAt: { type: string }
+        completedAt: { type: string }
+        metadata:
+          type: object
+          properties:
+            bankAccountId: { type: string }
+            bankName: { type: string }
+            paymentMode: { type: string }
+            failureReason: { type: string }
+
+    TransactionHistoryResponse:
+      type: object
+      properties:
+        transactions:
+          type: array
+          items:
+            $ref: "#/components/schemas/Transaction"
+        pagination:
+          type: object
+          properties:
+            page: { type: number }
+            limit: { type: number }
+            total: { type: number }
+            totalPages: { type: number }
+
+    # ----- Verification -----
+    VerifyFaceResult:
+      type: object
+      properties:
+        success: { type: boolean }
+        verified: { type: boolean }
+        message: { type: string }
+        error: { type: string }
+
+    # ----- Documents -----
+    DocumentUploadResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        documentUrl: { type: string }
+        error: { type: string }
+
+    DocumentFetchResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        documents: { $ref: "#/components/schemas/DocumentUploads" }
+        error: { type: string }
+
+    # ----- Location (locationService.ts) -----
+    LocationData:
+      type: object
+      properties:
+        latitude: { type: number }
+        longitude: { type: number }
+        accuracy: { type: number, nullable: true }
+        altitude: { type: number, nullable: true }
+        heading: { type: number, nullable: true }
+        speed: { type: number, nullable: true }
+        timestamp: { type: number }
+
+    LocationAddress:
+      type: object
+      properties:
+        street: { type: string }
+        city: { type: string }
+        region: { type: string }
+        postalCode: { type: string }
+        country: { type: string }
+        formattedAddress: { type: string }
+
+    # ----- Pay (payCalculations.ts) -----
+    PayBreakdown:
+      type: object
+      properties:
+        regularHours: { type: number }
+        regularPay: { type: number }
+        overtimeHours: { type: number }
+        overtimePay: { type: number }
+        totalPay: { type: number }
+        basePayPerHour: { type: number }
+        overtimeRatePerHour: { type: number }
+
+    # ----- Backend Sample -----
+    Sample:
+      type: object
+      properties:
+        _id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        createdAt: { type: string }
+        updatedAt: { type: string }
+
+    SampleInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        description: { type: string, default: "" }
+
+# =============================================================================
+# APPLICATION FLOW (frontend routes & logic from _layout.tsx + authContext)
+# =============================================================================
+x-application-flow:
+  onboarding:
+    - route: splash
+      description: App entry
+    - route: permissions
+      condition: !hasCompletedPermissionOnboarding
+      description: Grant push, camera, location
+    - route: login
+      condition: hasCompletedPermissionOnboarding && !hasCompletedLogin
+      description: Phone number → Send OTP
+    - route: otp
+      params: [phoneNumber]
+      description: Enter 4-digit OTP
+    - route: profile
+      condition: hasCompletedLogin && !hasCompletedProfile
+      description: Full name, age, gender, photo
+    - route: documents
+      condition: hasCompletedProfile && !hasCompletedDocuments
+      description: Aadhar & PAN upload
+    - route: verification
+      condition: hasCompletedDocuments && !hasCompletedVerification
+      description: Identity verification (face/fingerprint)
+    - route: training
+      condition: hasCompletedVerification && !hasCompletedTraining
+      description: Training videos (video1–video4)
+    - route: location-type
+      condition: hasCompletedTraining && !hasCompletedSetup
+      description: Choose warehouse vs darkstore
+    - route: shift-selection
+      description: Select shifts
+    - route: get-started
+      condition: hasCompletedSetup
+      description: Start shift / go to home
+    - route: collect-device
+      description: Device collection (optional)
+  tabs:
+    - path: "(tabs)"
+      screens:
+        - index (Home)
+        - attendance
+        - payouts
+        - profile
+  profile-subroutes:
+    - personal-information
+    - work-history
+    - bank-details
+    - update-bank-details
+    - update-upi-details
+    - my-documents
+    - document-detail
+    - support-settings
+    - notifications
+    - faqs
+    - contact-support
+    - terms-conditions
+    - privacy-policy
+    - edit-profile
+  constants:
+    basePayPerHour: 100
+    overtimeMultiplier: 1.25
+    documentMaxFileSizeBytes: 10485760
+    documentMinDimension: 200
+    locationTimeoutMs: 30000
+    locationCacheMaxAgeMs: 60000
+
+# =============================================================================
+# FRONTEND FILES REFERENCE
+# =============================================================================
+x-frontend-files:
+  api: frontend/utils/apiClient.ts
+  auth: frontend/state/authContext.tsx
+  bank: frontend/services/bank.service.ts
+  wallet: frontend/services/wallet.service.ts
+  documents: frontend/utils/documentService.ts
+  faceVerify: frontend/services/faceVerification.service.ts
+  biometric: frontend/services/biometric.service.ts
+  location: frontend/services/location.service.ts
+  locationUtils: frontend/utils/locationService.ts
+  payCalculations: frontend/utils/payCalculations.ts
+  notifications: frontend/utils/notificationService.ts
+  layout: frontend/app/_layout.tsx
+  hooks:
+    - frontend/hooks/useTransactionHistory.ts
+    - frontend/hooks/useWithdraw.ts
+    - frontend/hooks/useBankVerification.ts
+    - frontend/hooks/useLiveLocation.ts
+    - frontend/hooks/useVerifyLocation.ts
