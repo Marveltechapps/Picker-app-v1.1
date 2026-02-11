@@ -10,15 +10,19 @@ import { apiPost, ApiClientError } from "@/utils/apiClient";
 export interface SendOtpResponse {
   success: boolean;
   message?: string;
+  /** Set when success is false (from API error or validation) */
   error?: string;
-  /** Present only when backend debugMode=1 and SMS failed – use for testing verify flow */
+  /** Present only in dev mode – use for testing verify flow */
   debugOtp?: string;
+  otp?: string;
 }
 
 export interface VerifyOtpResponse {
   success: boolean;
+  message?: string;
   token?: string;
   user?: { phone: string; id: string };
+  /** Set when success is false */
   error?: string;
 }
 

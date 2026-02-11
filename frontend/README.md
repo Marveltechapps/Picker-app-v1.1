@@ -29,6 +29,8 @@ Without this, "Send OTP" in Expo Go will fail with "Network request failed".
 - **Different networks / cellular:** Run `npx expo start --tunnel`. This uses ngrok and works when the phone can’t reach your PC directly.
 
 **If you see “Tunnel connection has been closed”:**  
+**If you see "ngrok tunnel took too long to connect":** The project uses a 60s tunnel timeout. If it still fails, set `EXPO_TUNNEL_TIMEOUT=90000` (Windows: `set EXPO_TUNNEL_TIMEOUT=90000` then run tunnel; macOS/Linux: `EXPO_TUNNEL_TIMEOUT=90000 npx expo start --tunnel`). You can also run the [ngrok app](https://ngrok.com/download) in the background or allow it through firewall/antivirus.
+
 Expo/ngrok tunnels can drop briefly due to network or ngrok limits. Usually you’ll see “Tunnel connected.” again shortly. If the app stops loading:
 1. Wait for “Tunnel connected.” in the terminal, then reload the app (shake device → Reload), or  
 2. Restart the dev server (`Ctrl+C`, then `npx expo start --tunnel` again), or  

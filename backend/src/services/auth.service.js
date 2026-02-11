@@ -111,11 +111,12 @@ function clearWrongAttempts(phone) {
 }
 
 /**
- * Normalize phone: digits only. Any length. Reject if empty or non-numeric.
+ * Normalize phone: digits only. For production OTP we require exactly 10 digits, not all zeros (per workflow).
  */
 function normalizePhone(phone) {
   const digits = String(phone ?? '').replace(/\D/g, '');
-  return digits.length > 0 ? digits : null;
+  if (digits.length !== 10 || /^0+$/.test(digits)) return null;
+  return digits;
 }
 
 /**
@@ -155,7 +156,7 @@ const sendOtp = async (phone) => {
   // ----- PRODUCTION: rate limits, real SMS -----
   const trimmed = normalizePhone(phone);
   if (!trimmed) {
-    return { success: false, message: 'Invalid phone number. Phone must be numeric only.', errorCode: OTP_ERROR_CODES.INVALID_PHONE };
+    return { success: false, message: 'Invalid phone number. Enter a valid 10-digit mobile number.', errorCode: OTP_ERROR_CODES.INVALID_PHONE };
   }
 
   const resendCheck = checkResendLimit(trimmed);
@@ -231,7 +232,7 @@ const resendOtp = async (phone) => {
   // ----- PRODUCTION -----
   const trimmed = normalizePhone(phone);
   if (!trimmed) {
-    return { success: false, message: 'Invalid phone number. Phone must be numeric only.', errorCode: OTP_ERROR_CODES.INVALID_PHONE };
+    return { success: false, message: 'Invalid phone number. Enter a valid 10-digit mobile number.', errorCode: OTP_ERROR_CODES.INVALID_PHONE };
   }
 
   const resendCheck = checkResendLimit(trimmed);
@@ -316,7 +317,7 @@ const verifyOtp = async (phone, otp) => {
   // ----- PRODUCTION: attempt limit, expiry check -----
   const trimmed = normalizePhone(phone);
   if (!trimmed) {
-    return { success: false, message: 'Invalid phone number. Phone must be numeric only.', errorCode: OTP_ERROR_CODES.INVALID_PHONE };
+    return { success: false, message: 'Invalid phone number. Enter a valid 10-digit mobile number.', errorCode: OTP_ERROR_CODES.INVALID_PHONE };
   }
 
   const attemptCheck = checkWrongAttemptLimit(trimmed);

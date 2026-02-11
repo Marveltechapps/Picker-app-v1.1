@@ -6,7 +6,7 @@
  */
 const http = require('http');
 const https = require('https');
-const { getSmsVendorUrl, getSmsVendorParams, getSmsProvider, getTwilioConfig, getMsg91Config } = require('../config/otp.config');
+const { getSmsVendorUrl, getSmsVendorParams, getSmsMessageTemplate, getSmsProvider, getTwilioConfig, getMsg91Config } = require('../config/otp.config');
 const { classifySmsError } = require('./sms-diagnostics');
 
 const SMS_TIMEOUT_MS = 15000;
@@ -56,20 +56,22 @@ function toE164India(phone) {
 
 const MAX_REDIRECTS = 5;
 
-/** Parse vendor response – 2xx; treat as fail on explicit failure patterns or JSON status/result. */
+/** Parse vendor response – 2xx; treat as success only when status is explicitly success (workflow: response.data.status === "success"). */
 function isConfigVendorSuccess(statusCode, body) {
   if (statusCode < 200 || statusCode >= 300) return false;
   const raw = (body || '').trim();
   const lower = raw.toLowerCase();
-  if (raw === '') return true;
-  // JSON: check status, result, status_code, etc.
+  // JSON: require explicit success (DLT gateways often return status/result)
   try {
     const j = JSON.parse(raw);
-    const s = (j?.status ?? j?.result ?? j?.Status ?? j?.Result ?? '').toString().toLowerCase();
-    const code = j?.status_code ?? j?.statusCode;
+    const s = (j?.status ?? j?.result ?? j?.Status ?? j?.Result ?? j?.data?.status ?? '').toString().toLowerCase();
+    const code = j?.status_code ?? j?.statusCode ?? j?.data?.status_code;
     if (s === 'fail' || s === 'error' || s === 'failure' || code === 0 || code === '0') return false;
     if (s === 'success' || s === 'sent' || s === 'ok') return true;
+    // If response is JSON but has no success-like status, do not assume success (avoids "200 OK but no SMS")
+    if (typeof j === 'object' && (j.status !== undefined || j.result !== undefined || j.Status !== undefined)) return false;
   } catch (_) {}
+  if (raw === '') return true;
   if (/\b(success|sent|ok|delivered|message\s+sent)\b/.test(lower)) return true;
   if (/^\s*{\s*"?(status|result)"?\s*:\s*"(fail|error)"\s*}/.test(lower)) return false;
   if (/^(error|invalid|failed|denied):\s*/im.test(raw)) return false;
@@ -181,14 +183,15 @@ function buildPostBody(paramMobile, paramMessage, mobile, msg) {
   return `${paramMobile}=${enc(mobile)}&${paramMessage}=${enc(msg)}`;
 }
 
-/** Send via config file smsvendor (Spear UC–style). Param names from config only (no guessing). */
+/** Send via config file smsvendor (Spear UC–style). Param names and optional DLT message template from config. */
 const sendViaConfigSms = (phone, otp) => {
   const { OTP_ERROR_CODES } = require('../config/otp.constants');
   let baseUrl = getSmsVendorUrl();
   if (!baseUrl) return Promise.resolve({ sent: false });
   const baseClean = baseUrl.replace(/\&+$/, '');
   const { paramMobile, paramMessage, countryCode, prependCountryCode, method } = getSmsVendorParams();
-  const msg = `Your Picker App OTP is ${otp}. Valid for 5 min.`;
+  const template = getSmsMessageTemplate();
+  const msg = template ? String(template).replace(/\{otp\}/gi, otp) : `Your Picker App OTP is ${otp}. Valid for 5 min.`;
   const digits = normalizeMobileForVendor(phone);
   const mobile = (prependCountryCode && countryCode ? countryCode : '') + digits;
   const sep = baseClean.includes('?') ? '&' : '?';

@@ -50,12 +50,14 @@ function loadOtpConfig() {
       msg91AuthKey: (typeof data.msg91AuthKey === 'string' ? data.msg91AuthKey.trim() : '') || (process.env.MSG91_AUTH_KEY || '').trim(),
       msg91Sender: (typeof data.msg91Sender === 'string' ? data.msg91Sender.trim() : '') || (process.env.MSG91_SENDER || '').trim(),
       msg91TemplateId: (typeof data.msg91TemplateId === 'string' ? data.msg91TemplateId.trim() : '') || (process.env.MSG91_TEMPLATE_ID || '').trim(),
+      /** Optional: DLT-approved message template. Use {otp} placeholder. If set, this is used instead of default message so SMS is not dropped by DLT. */
+      smsMessageTemplate: typeof data.smsMessageTemplate === 'string' ? data.smsMessageTemplate.trim() : '',
     };
     const hasVendor = !!cached.smsvendor;
     console.log('[OTP config] Loaded from', configPath, '| smsProvider:', cached.smsProvider, '| smsvendor:', hasVendor ? 'set' : 'not set', '| countryCode:', cached.smsCountryCode, '| otpDevMode:', cached.otpDevMode, '| debugMode:', cached.debugMode);
   } catch (err) {
     console.warn('[OTP config] Failed to load', configPath, ':', err?.message);
-    cached = { smsvendor: '', smsProvider: 'config', smsParamMobile: 'mobile', smsParamMessage: 'message', smsCountryCode: '91', smsPrependCountryCode: false, smsMethod: 'GET', debugMode: false, otpDevMode: process.env.NODE_ENV === 'development', twilioAccountSid: '', twilioAuthToken: '', twilioPhoneNumber: '', msg91AuthKey: '', msg91Sender: '', msg91TemplateId: '' };
+    cached = { smsvendor: '', smsProvider: 'config', smsParamMobile: 'mobile', smsParamMessage: 'message', smsCountryCode: '91', smsPrependCountryCode: false, smsMethod: 'GET', debugMode: false, otpDevMode: process.env.NODE_ENV === 'development', twilioAccountSid: '', twilioAuthToken: '', twilioPhoneNumber: '', msg91AuthKey: '', msg91Sender: '', msg91TemplateId: '', smsMessageTemplate: '' };
   }
   return cached;
 }
@@ -106,6 +108,11 @@ function getSmsVendorParams() {
   };
 }
 
+/** Optional DLT-approved SMS message. Use {otp} in the string; replaced at send time. If empty, default message is used. */
+function getSmsMessageTemplate() {
+  return loadOtpConfig().smsMessageTemplate || '';
+}
+
 /** DEV mode: do not send real SMS; use fixed OTP and log to console. PROD: send real SMS only. */
 function isOtpDevMode() {
   return loadOtpConfig().otpDevMode === true;
@@ -125,6 +132,7 @@ module.exports = {
   loadOtpConfig,
   getSmsVendorUrl,
   getSmsVendorParams,
+  getSmsMessageTemplate,
   getSmsProvider,
   getTwilioConfig,
   isOtpDevMode,

@@ -4,7 +4,7 @@ import "react-native-gesture-handler";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { View, ActivityIndicator, StyleSheet, Platform, Text } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -39,6 +39,10 @@ if (typeof window !== 'undefined') {
 }
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
+
+/** Minimum time to keep native splash visible (ms). Must match splash.tsx for consistent 3–4s display. */
+const NATIVE_SPLASH_MIN_MS = 3500;
+
 console.log("[STARTUP] 3 _layout.tsx: module-level code done");
 
 const queryClient = new QueryClient({
@@ -56,8 +60,15 @@ function RootLayoutNav() {
   const segments = useSegments();
   const router = useRouter();
   const colors = useColors();
+  const [splashMinTimeReached, setSplashMinTimeReached] = useState(false);
   console.log("[STARTUP] 5b RootLayoutNav: hooks done, isLoading=", isLoading, "segments=", segments);
   const isExpoGo = Boolean(typeof Constants !== "undefined" && Constants?.executionEnvironment === "storeClient");
+
+  // Keep native splash visible for at least NATIVE_SPLASH_MIN_MS before allowing hide anywhere
+  useEffect(() => {
+    const t = setTimeout(() => setSplashMinTimeReached(true), NATIVE_SPLASH_MIN_MS);
+    return () => clearTimeout(t);
+  }, []);
   // In Expo Go, ensure loading/root never use a dark background so we never show a black screen.
   const loadingBg = isExpoGo ? "#F9FAFB" : (colors?.background ?? "#F9FAFB");
 
@@ -232,9 +243,8 @@ function RootLayoutNav() {
     const seg0 = segments?.[0];
     const isSplashScreen = seg0 === "splash";
     
-    // Only hide native splash when we're not on the splash screen
-    // This allows the custom splash screen to show first
-    if (!isSplashScreen) {
+    // Only hide native splash when min display time has passed and we're not on the splash screen
+    if (splashMinTimeReached && !isSplashScreen) {
       SplashScreen.hideAsync().catch(() => {});
     }
     const inAuthFlow = seg0 === "permissions" || seg0 === "login" || seg0 === "otp" || seg0 === "profile" || seg0 === "verification" || seg0 === "documents" || seg0 === "aadhar-upload" || seg0 === "pan-upload" || seg0 === "verification-loading" || seg0 === "success" || seg0 === "training" || seg0 === "training-video" || seg0 === "location-type" || seg0 === "shift-selection" || seg0 === "get-started" || seg0 === "collect-device";
@@ -259,13 +269,13 @@ function RootLayoutNav() {
     } catch (error) {
       // Silently handle navigation errors
     }
-  }, [hasCompletedPermissionOnboarding, hasCompletedLogin, hasCompletedProfile, hasCompletedVerification, hasCompletedDocuments, hasCompletedTraining, hasCompletedSetup, hasCompletedManagerOTP, isLoading, segments, router]);
+  }, [hasCompletedPermissionOnboarding, hasCompletedLogin, hasCompletedProfile, hasCompletedVerification, hasCompletedDocuments, hasCompletedTraining, hasCompletedSetup, hasCompletedManagerOTP, isLoading, segments, router, splashMinTimeReached]);
 
   // In Expo Go, never block on auth loading: show Stack immediately so we don't get stuck on white screen.
   const showLoadingUI = isLoading && !isExpoGo;
   if (showLoadingUI) {
     console.log("[STARTUP] 6 showing loading UI");
-    SplashScreen.hideAsync().catch(() => {});
+    if (splashMinTimeReached) SplashScreen.hideAsync().catch(() => {});
     const primaryColor = colors?.primary?.[650] ?? "#5B4EFF";
     return (
       <View style={loadingStyles.loadingContainer}>
@@ -276,7 +286,7 @@ function RootLayoutNav() {
   }
 
   console.log("[STARTUP] 7 rendering Stack");
-  SplashScreen.hideAsync().catch(() => {});
+  if (splashMinTimeReached) SplashScreen.hideAsync().catch(() => {});
   return (
     <Stack screenOptions={{ headerBackTitle: "Back" }}>
       <Stack.Screen name="splash" options={{ headerShown: false }} />

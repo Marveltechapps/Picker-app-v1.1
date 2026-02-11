@@ -5,6 +5,9 @@ import * as ExpoSplashScreen from "expo-splash-screen";
 import { useAuth } from "@/state/authContext";
 import Constants from "expo-constants";
 
+/** Minimum time to show native splash (from app.json) before hiding so logo is visible 3–4 seconds. */
+const NATIVE_SPLASH_MIN_MS = 3500;
+
 /** Max time to show splash before redirecting with whatever state we have (prevents hang if load never completes). */
 const SPLASH_MAX_WAIT_MS = 12000;
 
@@ -21,13 +24,12 @@ export default function SplashScreen() {
   const isLoading = auth?.isLoading ?? true;
   const [hasRedirected, setHasRedirected] = useState(false);
 
+  // Keep native splash (app.json) visible for 3–4 seconds, then hide so in-app splash shows
   useEffect(() => {
-    const hideNativeSplash = async () => {
-      try {
-        await ExpoSplashScreen.hideAsync();
-      } catch (_) {}
-    };
-    hideNativeSplash();
+    const t = setTimeout(() => {
+      ExpoSplashScreen.hideAsync().catch(() => {});
+    }, NATIVE_SPLASH_MIN_MS);
+    return () => clearTimeout(t);
   }, []);
 
   // Redirect once auth state is loaded (or max wait). Use persisted state so restart restores correct route.
@@ -100,7 +102,7 @@ export default function SplashScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#4A3AFF" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       
       {/* Logo/Icon Container */}
       <View style={styles.logoContainer}>
@@ -115,8 +117,8 @@ export default function SplashScreen() {
 
       {/* Text Container */}
       <View style={styles.textContainer}>
-        <Text style={styles.heading}>Picker Pro</Text>
-        <Text style={styles.tagline}>Scan Fast. Pick Smart.</Text>
+        <Text style={styles.heading}>Selorg Packman</Text>
+        <Text style={styles.tagline}>Pack Smarter.</Text>
       </View>
     </View>
   );
@@ -125,7 +127,7 @@ export default function SplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#4A3AFF",
+    backgroundColor: "#FFFFFF",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -139,7 +141,7 @@ const styles = StyleSheet.create({
     width: 98,
     height: 98,
     borderRadius: 21,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#F5F5F5",
     alignItems: "center",
     justifyContent: "center",
     padding: 28,
@@ -149,8 +151,8 @@ const styles = StyleSheet.create({
     ),
   },
   logo: {
-    width: 42,
-    height: 42,
+    width: 80,
+    height: 80,
   },
   textContainer: {
     position: "absolute",
@@ -161,7 +163,7 @@ const styles = StyleSheet.create({
   heading: {
     fontSize: 31.5,
     fontWeight: "900",
-    color: "#FFFFFF",
+    color: "#1a1a1a",
     textAlign: "center",
     letterSpacing: -0.79, // -2.5% of 31.5
     lineHeight: 35,
@@ -169,7 +171,7 @@ const styles = StyleSheet.create({
   tagline: {
     fontSize: 15.75,
     fontWeight: "400",
-    color: "rgba(255, 255, 255, 0.8)",
+    color: "#6B7280",
     textAlign: "center",
     lineHeight: 24.5,
   },

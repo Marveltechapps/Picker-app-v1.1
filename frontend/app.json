@@ -1,20 +1,20 @@
 {
   "expo": {
-    "name": "Mobile UI Clone Project",
-    "slug": "mobile-ui-clone-project",
+    "name": "Selorg Packman",
+    "slug": "selorgpackman",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "rork-app",
     "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/images/splash-icon.png",
+      "image": "./assets/images/icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#FFFFFF"
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "app.rork.mobile-ui-clone-project",
+      "bundleIdentifier": "com.selorg.packman",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos",
         "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera",
@@ -30,10 +30,10 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#2f8f3e"
       },
-      "package": "com.anonymous.expoapp",
+      "package": "com.selorg.packman",
       "permissions": [
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
@@ -56,10 +56,20 @@
       "softwareKeyboardLayoutMode": "pan"
     },
     "web": {
-      "favicon": "./assets/images/favicon.png",
+      "name": "Selorg Packman",
+      "shortName": "Selorg Packman",
+      "favicon": "./assets/images/icon.png",
       "bundler": "metro"
     },
     "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/icon.png",
+          "backgroundColor": "#FFFFFF",
+          "resizeMode": "contain"
+        }
+      ],
       [
         "expo-router",
         {
@@ -86,7 +96,7 @@
         "expo-notifications",
         {
           "icon": "./assets/images/icon.png",
-          "color": "#5B4EFF",
+          "color": "#2f8f3e",
           "sounds": [],
           "mode": "production"
         }
