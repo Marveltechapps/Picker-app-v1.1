@@ -8,16 +8,9 @@
  * localhost on device refers to the device itself, not your dev machine.
  */
 
-const PLACEHOLDER_API = "https://api.example.com";
+import { API_BASE_URL } from "@/constants/config";
 
-function getDefaultBaseUrl(): string {
-  const envUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
-  if (envUrl && envUrl !== PLACEHOLDER_API) return envUrl;
-  // Web and simulators: localhost works. Expo Go on physical device: use EXPO_PUBLIC_API_URL with your IP.
-  return "http://localhost:3000";
-}
-
-const DEFAULT_BASE_URL = getDefaultBaseUrl();
+const DEFAULT_BASE_URL = API_BASE_URL;
 
 export interface ApiError {
   message: string;
@@ -61,6 +54,7 @@ export async function apiClient<T = unknown>(
 ): Promise<T> {
   const baseUrl = DEFAULT_BASE_URL.replace(/\/$/, "");
   const url = `${baseUrl}${endpoint}`;
+  if (__DEV__) console.log("[apiClient] Request URL:", url);
 
   // Get auth token
   const token = await getAuthToken();
@@ -93,6 +87,7 @@ export async function apiClient<T = unknown>(
 
     if (!response.ok) {
       const errorData = data as { message?: string; error?: string; code?: string; details?: unknown };
+      if (__DEV__) console.log("[apiClient] Error response:", response.status, errorData);
       throw new ApiClientError(
         errorData.message || errorData.error || `HTTP ${response.status}`,
         response.status,
@@ -101,25 +96,38 @@ export async function apiClient<T = unknown>(
       );
     }
 
+    if (__DEV__) console.log("[apiClient] Success:", url);
     return data as T;
   } catch (error) {
     if (error instanceof ApiClientError) {
+      if (__DEV__) console.log("[apiClient] ApiClientError:", error.message, error.status, error.details);
       throw error;
     }
 
-    const baseUrl = getDefaultBaseUrl();
-    const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(baseUrl);
-    const isNative = typeof navigator !== "undefined" && navigator.product === "ReactNative";
-    const hint =
-      typeof __DEV__ !== "undefined" && __DEV__ && isNative && isLocalhost
-        ? " Set EXPO_PUBLIC_API_URL in .env to your computer's IP (e.g. http://192.168.1.x:3000) and ensure the backend is running."
-        : "";
+    const rawMessage = error instanceof Error ? error.message : "Network request failed";
+    const isFetchFailure =
+      rawMessage === "Failed to fetch" ||
+      rawMessage === "Network request failed" ||
+      /network error|load failed/i.test(rawMessage);
 
-    throw new ApiClientError(
-      (error instanceof Error ? error.message : "Network request failed") + hint,
-      0,
-      "NETWORK_ERROR"
-    );
+    const baseUrlForHint = DEFAULT_BASE_URL;
+    const isLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(baseUrlForHint);
+    const isNative = typeof navigator !== "undefined" && navigator.product === "ReactNative";
+
+    let hint = "";
+    if (isFetchFailure) {
+      if (isNative) {
+        hint =
+          " Set EXPO_PUBLIC_API_URL in .env to your computer's IP (e.g. http://192.168.1.x:3000), ensure the backend is running, and restart the app.";
+      } else {
+        hint =
+          " Ensure the backend is running on port 3000 (same host as this page). If the API is elsewhere, set EXPO_PUBLIC_API_URL.";
+      }
+    }
+
+    const errMessage = isFetchFailure ? "Network request failed" + hint : rawMessage;
+    if (__DEV__) console.log("[apiClient] Network error:", rawMessage, "url:", url);
+    throw new ApiClientError(errMessage, 0, "NETWORK_ERROR");
   }
 }
 
@@ -146,6 +154,7 @@ export async function apiPost<T = unknown>(endpoint: string, body?: unknown): Pr
 export async function apiPostFormData<T = unknown>(endpoint: string, formData: FormData): Promise<T> {
   const baseUrl = DEFAULT_BASE_URL.replace(/\/$/, "");
   const url = `${baseUrl}${endpoint}`;
+  if (__DEV__) console.log("[apiClient] POST (form) URL:", url);
   const token = await getAuthToken();
   const headers: HeadersInit = {};
   if (token) headers["Authorization"] = `Bearer ${token}`;

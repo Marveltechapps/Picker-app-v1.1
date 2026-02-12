@@ -20,6 +20,7 @@ export default function LoginPhoneScreen() {
   const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string>("");
   const [exitModalVisible, setExitModalVisible] = useState<boolean>(false);
   const [exitLoading, setExitLoading] = useState<boolean>(false);
 
@@ -34,25 +35,55 @@ export default function LoginPhoneScreen() {
     const numeric = text.replace(/[^0-9]/g, "");
     if (numeric.length <= 10) {
       setPhoneNumber(numeric);
+      if (errorMessage) setErrorMessage("");
     }
   };
 
   const handleSendOTP = async () => {
-    if (!isValidIndianNumber(phoneNumber)) return;
+    if (__DEV__) console.log("[login] handleSendOTP called, phoneNumber:", phoneNumber);
+    if (!isValidIndianNumber(phoneNumber)) {
+      if (__DEV__) console.log("[login] handleSendOTP aborted – invalid phone");
+      return;
+    }
+    setErrorMessage("");
     setLoading(true);
     try {
+      if (__DEV__) console.log("[login] sendOtp request starting…");
       const result = await sendOtp(phoneNumber);
-      setLoading(false);
+      if (__DEV__) console.log("[login] sendOtp result:", result?.success, result?.error ?? result?.message);
+      if (!result) {
+        const msg = "No response from server. Please try again.";
+        setErrorMessage(msg);
+        Alert.alert("Error", msg);
+        return;
+      }
       if (result.success) {
         const params: Record<string, string> = { phoneNumber };
-        if (result.debugOtp) params.debugOtp = result.debugOtp;
+        const devOtp = result.debugOtp ?? result.otp;
+        if (devOtp) params.debugOtp = String(devOtp);
+        if (__DEV__) console.log("[login] Navigating to /otp with params:", params);
         router.push({ pathname: "/otp", params });
       } else {
-        Alert.alert("Error", result.error || result.message || "Failed to send OTP. Please try again.");
+        const msg = result.error || result.message || "Failed to send OTP. Please try again.";
+        setErrorMessage(msg);
+        Alert.alert("Error", msg);
       }
     } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      const errDetails = err && typeof err === "object" && "details" in err ? (err as { details?: unknown }).details : undefined;
+      if (__DEV__) console.log("[login] handleSendOTP catch – error.message:", errMsg, "details:", errDetails);
+      const isConnectivityError =
+        errMsg.includes("Network request failed") ||
+        errMsg.includes("Failed to fetch") ||
+        errMsg.toLowerCase().includes("network error") ||
+        errMsg.toLowerCase().includes("load failed");
+      const message = isConnectivityError
+        ? "Cannot reach the server. On Expo Go: set EXPO_PUBLIC_API_URL in .env to your computer's IP (e.g. http://192.168.1.x:3000), ensure the backend is running, and restart the app. On web: ensure the backend is running on port 3000."
+        : errMsg || "Failed to send OTP. Please try again.";
+      setErrorMessage(message);
+      Alert.alert("Error", message);
+    } finally {
       setLoading(false);
-      Alert.alert("Error", "Failed to send OTP. Please try again.");
     }
   };
 
@@ -148,6 +179,13 @@ export default function LoginPhoneScreen() {
     buttonContainer: {
       marginBottom: Spacing.xl,
     },
+    errorText: {
+      fontSize: Typography.fontSize.sm,
+      color: colors.error[500],
+      marginTop: Spacing.sm,
+      marginBottom: Spacing.xs,
+      textAlign: "center",
+    },
   }), [colors]);
 
   return (
@@ -196,6 +234,7 @@ export default function LoginPhoneScreen() {
               disabled={!isValid || loading}
               loading={loading}
             />
+            {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
           </View>
 
           <View style={styles.termsContainer}>

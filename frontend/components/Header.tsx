@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { View, Text, Pressable, StyleSheet, StatusBar, Platform } from "react-native";
+import { View, Text, Pressable, StyleSheet, StatusBar, Platform, Image } from "react-native";
 import { ChevronLeft, LucideIcon } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { Typography, Spacing, IconSizes } from "@/constants/theme";
@@ -74,7 +74,16 @@ export default function Header({
       alignItems: "center",
       justifyContent: "center",
     },
+    logo: {
+      width: 32,
+      height: 32,
+      borderRadius: 8,
+    },
   }), [colors]);
+
+  const logoSource = Platform.OS === "web"
+    ? { uri: "/android-chrome-192x192.png" }
+    : require("@/assets/images/icon.png");
 
   const handleBackPress = () => {
     if (onBackPress) {
@@ -110,7 +119,9 @@ export default function Header({
             <ChevronLeft color={colors.text.primary} size={IconSizes.xl} strokeWidth={2} />
           </Pressable>
         ) : (
-          <View style={styles.backButton} />
+          <View style={styles.backButton}>
+            <Image source={logoSource} style={styles.logo} resizeMode="cover" accessibilityLabel="Selorg Packman" />
+          </View>
         )}
         
         <View style={styles.titleContainer}>

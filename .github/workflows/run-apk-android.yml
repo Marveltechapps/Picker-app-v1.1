@@ -1,0 +1,81 @@
+# Run APK / Android build – EAS Build (Expo) or local build
+name: Run APK (Android)
+
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/run-apk-android.yml'
+  pull_request:
+    branches: [master, main]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/run-apk-android.yml'
+  workflow_dispatch:
+
+env:
+  EXPO_PROJECT_ROOT: frontend
+
+jobs:
+  # Build Android APK via EAS (Expo Application Services)
+  # Requires: EXPO_TOKEN secret in repo (create at https://expo.dev/accounts/[account]/settings/access-tokens)
+  build-android-eas:
+    name: Build Android APK (EAS)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build Android APK (EAS)
+        run: eas build --platform android --profile preview --non-interactive --no-wait
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+  # Optional: local APK build (no EAS token; needs Android SDK on runner)
+  # Uncomment and use this job if you prefer local build instead of EAS
+  # build-android-local:
+  #   name: Build Android APK (local)
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: '20'
+  #         cache: 'npm'
+  #         cache-dependency-path: frontend/package-lock.json
+  #     - uses: actions/setup-java@v4
+  #       with:
+  #         distribution: 'temurin'
+  #         java-version: '17'
+  #     - name: Install frontend dependencies
+  #       working-directory: frontend
+  #       run: npm ci
+  #     - name: Build APK (local script)
+  #       working-directory: frontend/apk
+  #       run: |
+  #         chmod +x build-apk.sh
+  #         ./build-apk.sh --local --json || ./build-apk.sh --local
+  #       env:
+  #         ANDROID_HOME: ${{ env.ANDROID_HOME }}
+  #         JAVA_HOME: ${{ env.JAVA_HOME }}

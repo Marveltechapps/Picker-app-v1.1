@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "scripts": {
     "start": "npx expo start",
+    "build": "npx expo export --platform web",
     "start:web": "npx expo start --web --port 8082",
     "start:android": "npx expo start --android",
     "start:ios": "npx expo start --ios",
@@ -46,7 +47,7 @@
     "expo-location": "~19.0.8",
     "expo-notifications": "~0.32.16",
     "expo-router": "~6.0.23",
-    "expo-splash-screen": "~31.0.12",
+    "expo-splash-screen": "~31.0.13",
     "expo-status-bar": "~3.0.9",
     "expo-symbols": "~1.0.8",
     "expo-system-ui": "~6.0.9",

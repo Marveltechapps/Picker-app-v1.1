@@ -20,7 +20,16 @@ const sampleRoutes = require('./routes/sample.routes');
 
 const app = express();
 
-app.use(cors({ origin: true, credentials: true }));
+// CORS: allow localhost/127.0.0.1 with any port (Expo web on 19006, 8081, etc.) and reflect other origins.
+const corsOptions = {
+  credentials: true,
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) return callback(null, true);
+    return callback(null, origin);
+  },
+};
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '1mb' }));
 
 app.get('/health', (req, res) => {

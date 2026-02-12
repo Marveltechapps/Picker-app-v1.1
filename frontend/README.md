@@ -7,18 +7,19 @@ npm install
 npm start
 ```
 
-## Expo Go: Backend API (Sign In / Send OTP)
+## Expo Go on device: Backend API (Sign In / Send OTP)
 
-When using **Expo Go on a physical device**, the app cannot use `localhost` — that refers to the phone. Set your computer's LAN IP in the frontend `.env`:
+When using **Expo Go on a physical device**, the app cannot use `localhost` or `127.0.0.1` — that refers to the phone, not your dev machine. Do the following:
 
-1. **Get your machine's IP** (same WiFi as the phone):  
+1. **Run the backend** on your computer (default: `0.0.0.0:3000` so it’s reachable from the LAN).
+2. **Get your computer’s LAN IP** (same WiFi as the phone):  
    Windows: `ipconfig` → IPv4 Address  |  macOS/Linux: `ifconfig` or `ip addr`
-2. **Copy** `frontend/.env.example` to `frontend/.env` and set:
+3. **Create or edit** `frontend/.env` and set:
    ```bash
-   EXPO_PUBLIC_API_URL=http://YOUR_IP:3000
+   EXPO_PUBLIC_API_URL=http://YOUR_COMPUTER_IP:3000
    ```
-   Example: `EXPO_PUBLIC_API_URL=http://192.168.1.100:3000`
-3. **Backend** must be running and bound to all interfaces (default: `0.0.0.0`). Restart the backend after changing `.env`.
+   Example: `EXPO_PUBLIC_API_URL=http://192.168.1.100:3000`  
+   Do not use the literal text `YOUR_IP` or `YOUR_IPv4` — use your actual IPv4 address.
 4. **Restart Expo** (`npx expo start --clear`) after changing `.env` so the new URL is picked up.
 
 Without this, "Send OTP" in Expo Go will fail with "Network request failed".

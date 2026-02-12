@@ -24,11 +24,15 @@ export default function PrimaryButton({ title, onPress, disabled, loading, style
       onPress={onPress}
       disabled={disabled || loading}
       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: disabled || loading, busy: loading }}
+      // Ensure web gets click events: inner content must not capture pointer (box-none)
+      {...(Platform.OS === "web" ? { tabIndex: 0 } : {})}
     >
       {loading ? (
         <ActivityIndicator color={Colors.white} size="small" />
       ) : (
-        <View style={styles.textWrap}>
+        <View style={styles.textWrap} pointerEvents="none" collapsable={false}>
           <Text style={styles.buttonText} numberOfLines={1} allowFontScaling>
             {title}
           </Text>
@@ -49,7 +53,7 @@ const styles = StyleSheet.create({
     minHeight: 48,
     minWidth: 120,
     ...(Platform.OS === "web"
-      ? { boxShadow: "0px 4px 12px rgba(91, 78, 255, 0.3)", elevation: 4 }
+      ? { boxShadow: "0px 4px 12px rgba(91, 78, 255, 0.3)", elevation: 4, cursor: "pointer" }
       : { ...Shadows.lg, shadowColor: Colors.primary[650], shadowOpacity: 0.3 }),
   },
   buttonDisabled: {

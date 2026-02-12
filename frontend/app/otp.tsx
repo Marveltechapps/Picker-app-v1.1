@@ -79,10 +79,12 @@ export default function OTPScreen() {
       Alert.alert("Error", "Phone number is missing or invalid. Please go back and enter your number.");
       return;
     }
+    if (__DEV__) console.log("[otp] handleVerifyOTP called – phone:", ph);
     setLoading(true);
     try {
       const result = await verifyOtp(ph, otpValue);
       setLoading(false);
+      if (__DEV__) console.log("[otp] verifyOtp result – success:", result?.success, "hasToken:", !!result?.token);
       if (result.success && result.token) {
         await AsyncStorage.setItem(AUTH_TOKEN_KEY, result.token);
         await completeLogin(ph);
@@ -108,6 +110,8 @@ export default function OTPScreen() {
       }
     } catch (error) {
       setLoading(false);
+      const errMsg = error instanceof Error ? error.message : String(error);
+      if (__DEV__) console.log("[otp] handleVerifyOTP catch – error.message:", errMsg);
       Alert.alert("Error", "Failed to verify OTP. Please try again.");
     }
   };
@@ -118,10 +122,12 @@ export default function OTPScreen() {
       Alert.alert("Error", "Phone number is missing. Please go back to login.");
       return;
     }
+    if (__DEV__) console.log("[otp] handleResend called – phone:", ph);
     setLoading(true);
     try {
       const result = await resendOtp(ph);
       setLoading(false);
+      if (__DEV__) console.log("[otp] resendOtp result – success:", result?.success);
       if (result.success) {
         setResendCountdown(RESEND_COOLDOWN_SEC);
         if (result.debugOtp) {
@@ -133,8 +139,10 @@ export default function OTPScreen() {
       } else {
         Alert.alert("Error", result.error || result.message || "Failed to resend OTP.");
       }
-    } catch {
+    } catch (error) {
       setLoading(false);
+      const errMsg = error instanceof Error ? error.message : String(error);
+      if (__DEV__) console.log("[otp] handleResend catch – error.message:", errMsg);
       Alert.alert("Error", "Failed to resend OTP.");
     }
   };
