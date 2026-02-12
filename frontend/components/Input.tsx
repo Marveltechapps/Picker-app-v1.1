@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { LucideIcon, Eye, EyeOff } from "lucide-react-native";
-import { Colors, Typography, Spacing, BorderRadius } from "@/constants/theme";
+import { Colors, Typography, Spacing, BorderRadius } from "@/config/theme";
 
 interface InputProps extends TextInputProps {
   label?: string;

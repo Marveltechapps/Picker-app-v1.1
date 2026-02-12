@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Camera, Check, X, Edit2, RotateCw } from "lucide-react-native";
 import * as ImagePicker from "expo-image-picker";
 import CircularImageCrop from "./CircularImageCrop";
-import { Colors, Typography, Spacing, BorderRadius, Shadows } from "@/constants/theme";
+import { Colors, Typography, Spacing, BorderRadius, Shadows } from "@/config/theme";
 import { isValidImageUri, getSafeImageSource } from "@/utils/imageUriValidator";
 
 const isMobile = Platform.OS !== "web";

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useMemo } from "react";
-import { getThemeColors, BaseColors } from "@/constants/theme";
+import { getThemeColors, BaseColors } from "@/config/theme";
 
 type ThemeColors = ReturnType<typeof getThemeColors>;
 

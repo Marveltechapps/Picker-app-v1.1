@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { LogOut } from "lucide-react-native";
 import { useAuth } from "@/state/authContext";
 import { sendOtp } from "@/services/auth.service";
-import { Typography, Spacing, BorderRadius } from "@/constants/theme";
+import { Typography, Spacing, BorderRadius } from "@/config/theme";
 import { useColors } from "@/contexts/ColorsContext";
 import Header from "@/components/Header";
 import PrimaryButton from "@/components/PrimaryButton";

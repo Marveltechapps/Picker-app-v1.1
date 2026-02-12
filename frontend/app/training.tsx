@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, StatusBar, TouchableOpacity, ScrollView, Alert,
 import { useRouter } from "expo-router";
 import { LogOut, Zap } from "lucide-react-native";
 import { useAuth, type TrainingProgress } from "@/state/authContext";
-import { Colors, Typography, Spacing, BorderRadius, Shadows } from "@/constants/theme";
+import { Colors, Typography, Spacing, BorderRadius, Shadows } from "@/config/theme";
 import Header from "@/components/Header";
 import TrainingVideoCard from "@/components/TrainingVideoCard";
 import PrimaryButton from "@/components/PrimaryButton";

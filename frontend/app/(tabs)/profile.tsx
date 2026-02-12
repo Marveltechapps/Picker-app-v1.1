@@ -27,7 +27,7 @@ import {
 } from "lucide-react-native";
 import ExitConfirmModal from "@/components/ExitConfirmModal";
 import { useRouter } from "expo-router";
-import { Colors, Typography, Spacing, BorderRadius, Shadows, IconSizes } from "@/constants/theme";
+import { Colors, Typography, Spacing, BorderRadius, Shadows, IconSizes } from "@/config/theme";
 import { useAuth } from "@/state/authContext";
 import { getProfileApi } from "@/services/user.service";
 

@@ -2,7 +2,7 @@ import React from "react";
 import { Modal, View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
 import { Bell, Camera, Battery, MapPin, MapPinned, LucideIcon } from "lucide-react-native";
 import { PermissionsState } from "@/state/authContext";
-import { Shadows } from "@/constants/theme";
+import { Shadows } from "@/config/theme";
 
 interface PermissionModalProps {
   visible: boolean;

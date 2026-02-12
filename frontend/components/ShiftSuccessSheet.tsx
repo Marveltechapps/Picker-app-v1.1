@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from "react-native";
 import BottomSheetModal from "./BottomSheetModal";
 import { Check, MapPin, Shield, Clock } from "lucide-react-native";
-import { Colors } from "@/constants/theme";
+import { Colors } from "@/config/theme";
 
 interface ShiftSuccessSheetProps {
   visible: boolean;

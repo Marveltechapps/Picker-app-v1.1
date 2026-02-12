@@ -6,7 +6,7 @@ import { useRouter } from "expo-router";
 import { useAuth } from "@/state/authContext";
 import { useLocation } from "@/state/locationContext";
 import GenerateOtpSheet from "@/components/GenerateOtpSheet";
-import { Shadows } from "@/constants/theme";
+import { Shadows } from "@/config/theme";
 
 export default function GetStartedScreen() {
   const router = useRouter();

@@ -1,6 +1,6 @@
 import React from "react";
 import { Pressable, Text, StyleSheet, ViewStyle, ActivityIndicator, Platform, View } from "react-native";
-import { Colors, Typography, Spacing, BorderRadius, Shadows } from "@/constants/theme";
+import { Colors, Typography, Spacing, BorderRadius, Shadows } from "@/config/theme";
 
 interface PrimaryButtonProps {
   title: string;

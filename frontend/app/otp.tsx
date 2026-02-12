@@ -6,7 +6,7 @@ import { LogOut } from "lucide-react-native";
 import { useAuth } from "@/state/authContext";
 import { verifyOtp, resendOtp } from "@/services/auth.service";
 import { getProfileApi } from "@/services/user.service";
-import { Colors, Typography, Spacing, BorderRadius } from "@/constants/theme";
+import { Colors, Typography, Spacing, BorderRadius } from "@/config/theme";
 import Header from "@/components/Header";
 import PrimaryButton from "@/components/PrimaryButton";
 import ExitConfirmModal from "@/components/ExitConfirmModal";

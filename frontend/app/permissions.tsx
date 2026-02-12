@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, StatusBar, Platform, Alert } from "
 import { useRouter } from "expo-router";
 import { Bell, Camera, Battery, MapPin, MapPinned } from "lucide-react-native";
 import { useAuth, PermissionsState } from "@/state/authContext";
-import { Colors, Typography, Spacing, BorderRadius, Shadows } from "@/constants/theme";
+import { Colors, Typography, Spacing, BorderRadius, Shadows } from "@/config/theme";
 import PermissionCard from "@/components/PermissionCard";
 import PermissionModal from "@/components/PermissionModal";
 import PrimaryButton from "@/components/PrimaryButton";

@@ -19,7 +19,7 @@ import {
   type ApiNotification,
 } from '@/services/notifications.service';
 import { useAuth } from '@/state/authContext';
-import { Colors, Typography, Spacing, BorderRadius, Shadows } from '@/constants/theme';
+import { Colors, Typography, Spacing, BorderRadius, Shadows } from '@/config/theme';
 
 type NotificationType = 'payout' | 'order' | 'shift' | 'training' | 'milestone' | 'bonus' | 'update';
 

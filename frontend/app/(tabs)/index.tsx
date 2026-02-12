@@ -4,7 +4,7 @@ import { TouchableOpacity as GestureTouchableOpacity } from "react-native-gestur
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MapPin, Bell, Calendar, Zap, Package, DollarSign, Target, Info, User } from "lucide-react-native";
 import { router } from "expo-router";
-import { Typography, Spacing, BorderRadius, Shadows, IconSizes } from "@/constants/theme";
+import { Typography, Spacing, BorderRadius, Shadows, IconSizes } from "@/config/theme";
 import { useColors } from "@/contexts/ColorsContext";
 import LocationVerifySheet from "@/components/LocationVerifySheet";
 import IdentityVerifySheet from "@/components/IdentityVerifySheet";

@@ -8,7 +8,7 @@
  * localhost on device refers to the device itself, not your dev machine.
  */
 
-import { API_BASE_URL } from "@/constants/config";
+import { API_BASE_URL } from "@/config/config";
 
 const DEFAULT_BASE_URL = API_BASE_URL;
 

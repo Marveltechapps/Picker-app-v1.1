@@ -1,9 +1,0 @@
-# Backend rules
-
-- Follow clean architecture: controllers → services → models
-- No frontend code in this folder
-- No Expo / React Native assumptions
-- Prefer readable, simple code
-- Avoid over-engineering
-- Keep files small and modular
-- Use CommonJS (require/module.exports) unless stated otherwise

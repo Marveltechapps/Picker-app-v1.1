@@ -16,7 +16,7 @@ import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { User, Hash, Building2, CreditCard, MapPin, AlertTriangle, CheckCircle2 } from "lucide-react-native";
 import Header from "@/components/Header";
-import { Colors, Typography, Spacing, BorderRadius, Shadows, IconSizes } from "@/constants/theme";
+import { Colors, Typography, Spacing, BorderRadius, Shadows, IconSizes } from "@/config/theme";
 import { useVerifyBankAccount, useSaveBankAccount, useUpdateBankAccount } from "@/hooks/useBankVerification";
 import { validateIFSC, validateAccountNumber, validateAccountHolder } from "@/services/bank.service";
 

@@ -1,7 +1,7 @@
 import React from "react";
 import { Modal, View, Text, Pressable, StyleSheet, ActivityIndicator, Platform } from "react-native";
 import { AlertCircle } from "lucide-react-native";
-import { Colors, Typography, Spacing, BorderRadius, Shadows } from "@/constants/theme";
+import { Colors, Typography, Spacing, BorderRadius, Shadows } from "@/config/theme";
 
 interface ConfirmationModalProps {
   visible: boolean;

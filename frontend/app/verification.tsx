@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, ScrollView, Alert, Dimensions, Platform, Activi
 import { useRouter } from "expo-router";
 import { LogOut } from "lucide-react-native";
 import { useAuth } from "@/state/authContext";
-import { Colors, Typography, Spacing } from "@/constants/theme";
+import { Colors, Typography, Spacing } from "@/config/theme";
 import Header from "@/components/Header";
 import FaceDetectionCamera, { FaceDetectionStatus } from "@/components/FaceDetectionCamera";
 import VerificationChecklist, { ChecklistItem } from "@/components/VerificationChecklist";

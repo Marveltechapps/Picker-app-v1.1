@@ -14,7 +14,7 @@ import {
 import { GestureHandlerRootView, PinchGestureHandler, State } from "react-native-gesture-handler";
 import Svg, { Circle, Defs, Mask, Rect } from "react-native-svg";
 import * as ImageManipulator from "expo-image-manipulator";
-import { Colors, Typography, Spacing, BorderRadius } from "@/constants/theme";
+import { Colors, Typography, Spacing, BorderRadius } from "@/config/theme";
 import { isValidImageUri, getSafeImageSource } from "@/utils/imageUriValidator";
 
 const getCropSize = (windowWidth: number) => Math.min(windowWidth - 80, 320);

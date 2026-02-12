@@ -5,7 +5,7 @@ import { Hash, Zap } from "lucide-react-native";
 import PrimaryButton from "./PrimaryButton";
 import * as Clipboard from "expo-clipboard";
 import { Copy, Check } from "lucide-react-native";
-import { Shadows } from "@/constants/theme";
+import { Shadows } from "@/config/theme";
 
 interface GenerateOtpSheetProps {
   visible: boolean;

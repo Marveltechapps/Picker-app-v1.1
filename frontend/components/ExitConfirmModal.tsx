@@ -9,7 +9,7 @@ import {
   Platform,
 } from "react-native";
 import { AlertCircle } from "lucide-react-native";
-import { Colors, Typography, Spacing, BorderRadius } from "@/constants/theme";
+import { Colors, Typography, Spacing, BorderRadius } from "@/config/theme";
 
 interface ExitConfirmModalProps {
   visible: boolean;

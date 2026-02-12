@@ -14,7 +14,7 @@ import { User, Hash, Building2, CreditCard, MapPin, CreditCard as UpiIcon } from
 import Header from "@/components/Header";
 import { useDefaultBankAccount } from "@/hooks/useBankVerification";
 import { getProfileApi } from "@/services/user.service";
-import { Colors, Typography, Spacing, BorderRadius, Shadows } from "@/constants/theme";
+import { Colors, Typography, Spacing, BorderRadius, Shadows } from "@/config/theme";
 
 type TabType = "bank" | "upi";
 

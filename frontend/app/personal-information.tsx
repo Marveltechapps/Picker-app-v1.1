@@ -12,7 +12,7 @@ import { Phone, Mail, Calendar } from "lucide-react-native";
 import { useRouter } from "expo-router";
 import { useAuth } from "@/state/authContext";
 import Header from "@/components/Header";
-import { Typography, Spacing, BorderRadius, Shadows } from "@/constants/theme";
+import { Typography, Spacing, BorderRadius, Shadows } from "@/config/theme";
 import { useColors } from "@/contexts/ColorsContext";
 
 export default function PersonalInformationScreen() {

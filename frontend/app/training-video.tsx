@@ -7,8 +7,8 @@ import { useAuth, type TrainingProgress } from "@/state/authContext";
 import { updateTrainingProgressApi } from "@/services/training.service";
 import PrimaryButton from "@/components/PrimaryButton";
 import ExitConfirmModal from "@/components/ExitConfirmModal";
-import { Shadows } from "@/constants/theme";
-import { getTrainingVideoUrl } from "@/constants/trainingVideos";
+import { Shadows } from "@/config/theme";
+import { getTrainingVideoUrl } from "@/config/trainingVideos";
 
 export default function TrainingVideoScreen() {
   const router = useRouter();

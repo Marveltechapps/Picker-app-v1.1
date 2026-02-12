@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Image, StyleSheet, ActivityIndicator, Platform, Text } from "react-native";
 import { CheckCircle2 } from "lucide-react-native";
-import { Shadows } from "@/constants/theme";
+import { Shadows } from "@/config/theme";
 import { isValidImageUri, getSafeImageSource } from "@/utils/imageUriValidator";
 
 interface DocumentThumbnailProps {

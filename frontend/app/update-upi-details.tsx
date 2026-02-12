@@ -16,7 +16,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { CreditCard, User, CheckCircle2, AlertTriangle } from "lucide-react-native";
 import { setUpiApi } from "@/services/user.service";
 import Header from "@/components/Header";
-import { Colors, Typography, Spacing, BorderRadius, Shadows, IconSizes } from "@/constants/theme";
+import { Colors, Typography, Spacing, BorderRadius, Shadows, IconSizes } from "@/config/theme";
 
 const STORAGE_KEY = "@bank/upi_details";
 

@@ -2,7 +2,7 @@ import React, { useMemo } from "react";
 import { View, Text, Pressable, StyleSheet, StatusBar, Platform, Image } from "react-native";
 import { ChevronLeft, LucideIcon } from "lucide-react-native";
 import { useRouter } from "expo-router";
-import { Typography, Spacing, IconSizes } from "@/constants/theme";
+import { Typography, Spacing, IconSizes } from "@/config/theme";
 import { useColors } from "@/contexts/ColorsContext";
 import { useTheme } from "@/state/themeContext";
 

@@ -1,17 +1,17 @@
 # Picker App
 
-React Native (Expo) frontend + Node/Express backend.
+This repository contains two **separate projects**:
 
-## Structure
+- **`frontend/`** — Expo / React Native app
+- **`backend/`** — Node.js / Express API
 
-```
-├── backend/     # Node/Express API
-├── frontend/    # Expo React Native app
-```
+Run and build each from its own folder. No shared source at root.
 
-## Quick Start
+---
 
-### Frontend (Expo)
+## Quick start
+
+### Frontend
 
 ```bash
 cd frontend
@@ -19,27 +19,29 @@ npm install
 npm start
 ```
 
-Or from root: `npm start`
+From repo root you can also run: `npm start` (delegates to frontend).
 
 ### Backend
 
 ```bash
 cd backend
 npm install
-# Copy .env.example to .env, set JWT_SECRET and other vars
+# Copy .env.example to .env and set MONGODB_URI, JWT_SECRET, etc.
 npm run dev
 ```
 
-Or from root: `npm run backend`
+From repo root: `npm run backend`
 
-## Build APK
+---
 
-```bash
-cd frontend/apk
-.\build-apk.bat          # Windows
-./build-apk.sh           # macOS/Linux
-```
+## Project docs
 
-## Environment
+- **[frontend/README.md](frontend/README.md)** — App setup, scripts, and build
+- **[backend/README.md](backend/README.md)** — API setup, env vars, seeds  
+- **backend/docs/** — API endpoints, MongoDB setup, OTP workflow, specs, Postman collections
 
-- **Frontend**: Set `EXPO_PUBLIC_API_URL` (e.g. `http://localhost:3000/api`) in `.env` or `app.config.js` to point to the backend.
+---
+
+## Root scripts (optional)
+
+From the repo root, `package.json` provides convenience scripts that delegate into `frontend` or `backend` (e.g. `npm start`, `npm run backend`, `npm run seed`). All real work is done inside each project folder.

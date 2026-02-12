@@ -4,7 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useAuth } from "@/state/authContext";
 import Header from "@/components/Header";
-import { Colors, Typography, Spacing, BorderRadius, Shadows } from "@/constants/theme";
+import { Colors, Typography, Spacing, BorderRadius, Shadows } from "@/config/theme";
 import { CheckCircle2, Edit, Upload } from "lucide-react-native";
 import PrimaryButton from "@/components/PrimaryButton";
 

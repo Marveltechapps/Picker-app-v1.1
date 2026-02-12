@@ -2,7 +2,7 @@ import React from "react";
 import { TouchableOpacity, Text, View, StyleSheet, Platform } from "react-native";
 import { ChevronRight, LucideIcon } from "lucide-react-native";
 import { PermissionStatus } from "@/state/authContext";
-import { Shadows } from "@/constants/theme";
+import { Shadows } from "@/config/theme";
 
 interface PermissionCardProps {
   icon: LucideIcon;
