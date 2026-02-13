@@ -6,6 +6,8 @@ module.exports = function (config) {
   if (!config.expo.android) config.expo.android = {};
   config.expo.android.usesCleartextTraffic = true;
   if (!config.expo.android.package) config.expo.android.package = 'com.selorg.packman';
+  // Required for react-native-vision-camera-face-detector (manifest merger: minSdkVersion must be >= 26)
+  config.expo.android.minSdkVersion = 26;
 
   return config;
 };
