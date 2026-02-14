@@ -1,5 +1,7 @@
 # Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
+# --- Not needed for production (dev-only, local, build artifacts) ---
+
 # dependencies
 node_modules/
 
@@ -16,7 +18,7 @@ android/
 # APK builds (do not commit to repo)
 *.apk
 apk/*.apk
-frontend/apk/*.apk
+apk/*.apk
 *.orig.*
 *.jks
 *.p8
@@ -26,6 +28,11 @@ frontend/apk/*.apk
 
 # Metro
 .metro-health-check*
+
+# Logs / coverage (not needed for production)
+*.log
+coverage/
+.nyc_output/
 
 # debug
 npm-debug.*
@@ -47,3 +54,8 @@ yarn-error.*
 
 .env
 rork-eslint.config.js
+
+# IDE / editor (not needed for production)
+.vscode/
+.idea/
+.cursor/

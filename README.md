@@ -1,47 +1,22 @@
 # Picker App
 
-This repository contains two **separate projects**:
+Expo / React Native app for pickers (profile, shifts, orders, performance, etc.). This repo is **frontend only**; the root is the app source.
 
-- **`frontend/`** — Expo / React Native app
-- **`backend/`** — Node.js / Express API
-
-Run and build each from its own folder. No shared source at root.
+**Backend:** The unified API (HHD + Picker) runs from **`Desktop/Dev/Backend`**. Set `EXPO_PUBLIC_API_URL` in `.env` to your backend URL (e.g. `http://YOUR_IP:5000/picker`) so this app talks to that server.
 
 ---
 
 ## Quick start
 
-### Frontend
-
 ```bash
-cd frontend
 npm install
 npm start
 ```
 
-From repo root you can also run: `npm start` (delegates to frontend).
-
-### Backend
-
-```bash
-cd backend
-npm install
-# Copy .env.example to .env and set MONGODB_URI, JWT_SECRET, etc.
-npm run dev
-```
-
-From repo root: `npm run backend`
+Configure the API URL in `.env` (e.g. `EXPO_PUBLIC_API_URL=http://192.168.1.x:5000/picker`) or in `config/config.ts`. Run the backend from `Dev/Backend` (`npm run dev` there).
 
 ---
 
-## Project docs
+## Project structure
 
-- **[frontend/README.md](frontend/README.md)** — App setup, scripts, and build
-- **[backend/README.md](backend/README.md)** — API setup, env vars, seeds  
-- **backend/docs/** — API endpoints, MongoDB setup, OTP workflow, specs, Postman collections
-
----
-
-## Root scripts (optional)
-
-From the repo root, `package.json` provides convenience scripts that delegate into `frontend` or `backend` (e.g. `npm start`, `npm run backend`, `npm run seed`). All real work is done inside each project folder.
+Root = app source: `app/`, `components/`, `config/`, `android/`, etc. No `frontend/` or `backend/` folder in this repo.
