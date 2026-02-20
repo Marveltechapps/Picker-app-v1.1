@@ -92,6 +92,38 @@ export default function TrainingVideosScreen() {
     }
   };
 
+  // Development skip function
+  const handleDevSkip = async () => {
+    Alert.alert(
+      "Development Skip",
+      "This will skip the training without completing videos. Only for development purposes.",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "Skip Training",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setLoading(true);
+              await completeTraining();
+              setLoading(false);
+              router.replace("/location-type");
+            } catch (error) {
+              setLoading(false);
+              Alert.alert("Error", "Failed to skip training. Please try again.");
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  // Check if we're in development mode
+  const isDevelopment = __DEV__ || process.env.EXPO_PUBLIC_ENV !== 'production';
+
   // New design for users who have completed training (accessed from profile)
   if (hasCompletedTraining) {
     return (
@@ -257,6 +289,17 @@ export default function TrainingVideosScreen() {
           disabled={!allComplete}
           loading={loading}
         />
+        
+        {/* Development skip button - only shown in dev mode */}
+        {isDevelopment && !allComplete && (
+          <TouchableOpacity 
+            style={styles.devSkipButton} 
+            onPress={handleDevSkip}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.devSkipText}>🚀 Dev: Skip Training</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <ExitConfirmModal
@@ -492,5 +535,22 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.xl,
     fontWeight: Typography.fontWeight.bold,
     color: Colors.success[500],
+  },
+  devSkipButton: {
+    marginTop: Spacing.md,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    backgroundColor: Colors.warning[100],
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.warning[300],
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  devSkipText: {
+    fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.semibold,
+    color: Colors.warning[700],
+    letterSpacing: Typography.letterSpacing.normal,
   },
 });
