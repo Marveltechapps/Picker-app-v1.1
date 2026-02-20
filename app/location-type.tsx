@@ -22,7 +22,8 @@ export default function LocationTypeScreen() {
     locationPermission,
     isLoading: locationLoading,
     startWatchingLocation,
-    stopWatchingLocation
+    stopWatchingLocation,
+    requestPermission
   } = useLocation();
   const [selectedType, setSelectedType] = useState<"warehouse" | "darkstore" | null>(locationType as "warehouse" | "darkstore" | null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -31,10 +32,30 @@ export default function LocationTypeScreen() {
 
   // Fetch location on mount and start watching for real-time updates
   useEffect(() => {
-    if (locationPermission === 'granted') {
-      refreshLocation();
-      startWatchingLocation();
-    }
+    // Request permission first if not granted
+    const initializeLocation = async () => {
+      if (locationPermission === 'unavailable' || locationPermission === 'denied') {
+        // Request permission on screen load
+        const granted = await requestPermission();
+        if (!granted) {
+          Alert.alert(
+            "Location Permission Required",
+            "Please enable location access to see your current location and nearby work sites.",
+            [{ text: "OK" }]
+          );
+          return;
+        }
+      }
+      
+      // Once permission is granted, fetch and watch location
+      if (locationPermission === 'granted') {
+        refreshLocation();
+        startWatchingLocation();
+      }
+    };
+
+    initializeLocation();
+    
     return () => {
       stopWatchingLocation();
     };
