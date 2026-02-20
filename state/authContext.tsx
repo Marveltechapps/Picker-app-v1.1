@@ -150,6 +150,26 @@ export const [AuthProvider, useAuth] = createContextHook(() => {
     loadState();
   }, []);
 
+  // Sync training progress with backend on login
+  useEffect(() => {
+    const syncTrainingProgress = async () => {
+      if (state.hasCompletedLogin) {
+        try {
+          const { getTrainingProgress } = await import("@/services/training.service");
+          const backendProgress = await getTrainingProgress();
+          setState(prev => ({
+            ...prev,
+            trainingProgress: backendProgress
+          }));
+        } catch (error) {
+          console.warn('[authContext] Failed to sync training progress:', error);
+        }
+      }
+    };
+
+    syncTrainingProgress();
+  }, [state.hasCompletedLogin]);
+
   const getLoadStateTimeout = () => {
     try {
       const isExpoGo = typeof Constants !== "undefined" && Constants?.executionEnvironment === "storeClient";

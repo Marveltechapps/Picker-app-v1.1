@@ -4,19 +4,21 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import { ChevronLeft, LogOut, BookOpen } from "lucide-react-native";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { useAuth, type TrainingProgress } from "@/state/authContext";
-import { updateTrainingProgressApi } from "@/services/training.service";
+import { trackWatchProgress, completeVideo } from "@/services/training.service";
 import PrimaryButton from "@/components/PrimaryButton";
 import ExitConfirmModal from "@/components/ExitConfirmModal";
 import { Shadows } from "@/config/theme";
-import { getTrainingVideoUrl } from "@/config/trainingVideos";
 
 export default function TrainingVideoScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{
-    videoId: keyof TrainingProgress;
+    videoId: string;
     title: string;
     duration: string;
     description: string;
+    videoUrl: string;
+    watchedSeconds: string;
+    lastPosition: string;
   }>();
   
   const { updateTrainingProgress, trainingProgress, logout } = useAuth();
@@ -26,13 +28,22 @@ export default function TrainingVideoScreen() {
   const [exitModalVisible, setExitModalVisible] = useState<boolean>(false);
   const [exitLoading, setExitLoading] = useState<boolean>(false);
   const isMountedRef = useRef<boolean>(true);
+  const [totalWatchedSeconds, setTotalWatchedSeconds] = useState<number>(
+    params.watchedSeconds ? Number(params.watchedSeconds) : 0
+  );
+  const lastSyncTimeRef = useRef<number>(Date.now());
+  const watchStartTimeRef = useRef<number>(Date.now());
 
-  // Get video URL from centralized configuration
-  const videoUrl = params.videoId ? getTrainingVideoUrl(params.videoId) : getTrainingVideoUrl("video1");
+  // Get video URL from params (now comes from backend)
+  const videoUrl = params.videoUrl || "";
 
   const player = useVideoPlayer(videoUrl, (player) => {
     player.loop = false;
     player.muted = false;
+    // Resume from last position if available
+    if (params.lastPosition && Number(params.lastPosition) > 0) {
+      player.currentTime = Number(params.lastPosition);
+    }
   });
 
   useEffect(() => {
@@ -44,36 +55,63 @@ export default function TrainingVideoScreen() {
     };
   }, [player]);
 
-  const savedProgress = params.videoId && params.videoId in trainingProgress 
-    ? trainingProgress[params.videoId] ?? 0 
-    : 0;
-
+  // Check if video is already completed
   useEffect(() => {
+    const videoId = params.videoId as keyof TrainingProgress;
+    const savedProgress = videoId && videoId in trainingProgress 
+      ? trainingProgress[videoId] ?? 0 
+      : 0;
+    
     if (savedProgress === 100) {
       setIsComplete(true);
       setProgress(100);
     }
-  }, [savedProgress]);
+  }, [params.videoId, trainingProgress]);
 
+  // Track watch progress and sync to backend
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (player.duration > 0) {
+    const interval = setInterval(async () => {
+      if (player.duration > 0 && player.playing) {
+        // Update local progress
         const progressPercent = Math.floor((player.currentTime / player.duration) * 100);
         setProgress(progressPercent);
+        
+        // Track watched time (only when playing)
+        const now = Date.now();
+        const elapsedSeconds = Math.floor((now - watchStartTimeRef.current) / 1000);
+        watchStartTimeRef.current = now;
+        setTotalWatchedSeconds(prev => prev + elapsedSeconds);
+        
+        // Sync to backend every 10 seconds
+        if (now - lastSyncTimeRef.current >= 10000 && params.videoId) {
+          lastSyncTimeRef.current = now;
+          try {
+            await trackWatchProgress(
+              params.videoId,
+              totalWatchedSeconds + elapsedSeconds,
+              player.currentTime
+            );
+          } catch (error) {
+            console.warn('[training-video] Failed to sync watch progress:', error);
+          }
+        }
+        
+        // Mark as complete when video reaches end
         if (progressPercent >= 99 && !isComplete) {
           setIsComplete(true);
         }
       }
-    }, 100);
+    }, 1000); // Check every second
 
     return () => clearInterval(interval);
-  }, [player, isComplete]);
+  }, [player, isComplete, params.videoId, totalWatchedSeconds]);
 
   const handlePlayPress = () => {
     if (player.playing) {
       player.pause();
     } else {
       player.play();
+      watchStartTimeRef.current = Date.now();
     }
   };
 
@@ -98,19 +136,50 @@ export default function TrainingVideoScreen() {
   const handleContinue = async () => {
     if (!isComplete || !params.videoId) return;
     setLoading(true);
+    
     try {
-      await updateTrainingProgressApi({ [params.videoId]: 100 });
-      await updateTrainingProgress(params.videoId, 100);
-    } catch (_) {
+      // Final sync of watch progress
+      await trackWatchProgress(
+        params.videoId,
+        totalWatchedSeconds,
+        player.currentTime
+      );
+      
+      // Mark video as complete (backend validates watch percentage)
+      const updatedProgress = await completeVideo(params.videoId);
+      
+      // Update local context
+      updateTrainingProgress(updatedProgress);
+      
+      Alert.alert(
+        "Video Complete!",
+        "Great job! You can now proceed to the next module.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              navigateAfterVideoCleanup(() => router.push("/training"));
+            }
+          }
+        ]
+      );
+    } catch (error: any) {
+      const errorMessage = error?.message || "Failed to complete video. Please try again.";
+      Alert.alert("Error", errorMessage);
+    } finally {
       setLoading(false);
-      return;
     }
-    setLoading(false);
+  };
+
+  const handleBack = () => {
     navigateAfterVideoCleanup(() => {
-      if (!isMountedRef.current) return;
-      if (router.canGoBack()) {
-        router.back();
-      } else {
+      try {
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.push("/training");
+        }
+      } catch {
         router.push("/training");
       }
     });
@@ -121,68 +190,34 @@ export default function TrainingVideoScreen() {
   const handleExitConfirm = async () => {
     try {
       setExitLoading(true);
-      if (player.playing) player.pause();
       await logout();
       setExitModalVisible(false);
-      InteractionManager.runAfterInteractions(() => {
-        try {
-          router.replace("/login");
-        } catch (_) {}
-      });
-    } catch (_) {}
-    finally {
+      router.replace("/login");
+    } catch {
+      setExitLoading(false);
+      setExitModalVisible(false);
+      Alert.alert("Error", "Failed to logout. Please try again.");
+    } finally {
       setExitLoading(false);
     }
   };
 
-  const getVideoDescription = (description: string | undefined) => {
-    if (!description) return "";
-    
-    const descriptions: Record<string, string> = {
-      "what is picking?": "This training module will teach you the essential skills needed for what is picking?. Watch the entire video to unlock the next module and continue your training.",
-      "how to use the hsd": "This training module will teach you the essential skills needed for how to use the hsd. Watch the entire video to unlock the next module and continue your training.",
-      "safety rules": "This training module will teach you the essential skills needed for safety rules. Watch the entire video to unlock the next module and continue your training.",
-      "packing standards": "This training module will teach you the essential skills needed for packing standards. Watch the entire video to unlock the next module and continue your training.",
-    };
-
-    return descriptions[description.toLowerCase()] || descriptions["what is picking?"];
-  };
-
-  const getDurationInMinutes = (duration: string | undefined): number => {
-    if (!duration) return 5;
-    try {
-      const match = duration.match(/(\d+)\s*min/);
-      if (match) {
-        const parsed = parseInt(match[1], 10);
-        return isNaN(parsed) ? 5 : parsed;
-      }
-      return 5;
-    } catch {
-      return 5;
-    }
-  };
-
-  const durationMinutes = getDurationInMinutes(params.duration);
+  const videoDurationText = params.duration || "Video";
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
-      
+
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() =>
-            navigateAfterVideoCleanup(() => {
-              if (!isMountedRef.current) return;
-              if (router.canGoBack()) router.back();
-              else router.push("/training");
-            })
-          }
-        >
-          <ChevronLeft color="#111827" size={28} strokeWidth={2} />
+        <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+          <ChevronLeft color="#111827" size={24} strokeWidth={2} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.iconButton} onPress={handleLogout}>
-          <LogOut color="#6B7280" size={24} strokeWidth={2} />
+        <View style={styles.titleContainer}>
+          <Text style={styles.title}>{params.title || "Training Video"}</Text>
+          <Text style={styles.subtitle}>{videoDurationText}</Text>
+        </View>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <LogOut color="#6B7280" size={20} strokeWidth={2} />
         </TouchableOpacity>
       </View>
 
@@ -191,87 +226,54 @@ export default function TrainingVideoScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.titleSection}>
-          <Text style={styles.title}>{params.title}</Text>
-          <Text style={styles.subtitle}>{params.duration} training video</Text>
-        </View>
-
         <View style={styles.videoContainer}>
-          {progress === 100 ? (
-            <View style={styles.completedVideoPlaceholder}>
-              <Text style={styles.completedVideoText}>Training in progress...</Text>
-              <View style={styles.progressBar}>
-                <View style={[styles.progressBarFill, { width: "100%" }]} />
-              </View>
-              <View style={styles.durationRow}>
-                <Text style={styles.durationText}>{params.duration}</Text>
-                <Text style={styles.durationText}>{params.duration}</Text>
-              </View>
-            </View>
-          ) : (
-            <TouchableOpacity 
-              style={styles.videoPlaceholder}
-              onPress={handlePlayPress}
-              activeOpacity={0.9}
-            >
-              {player.playing ? (
-                <>
-                  <Text style={styles.videoPlaceholderText}>Training in progress...</Text>
-                  <ActivityIndicator size="large" color="#6366F1" style={styles.spinner} />
-                </>
-              ) : (
-                <>
-                  <View style={styles.playButton}>
-                    <View style={styles.playIcon} />
-                  </View>
-                  <Text style={styles.videoPlaceholderText}>Click to Start</Text>
-                </>
-              )}
-              <View style={styles.progressBar}>
-                <View style={[styles.progressBarFill, { width: `${progress}%` }]} />
-              </View>
-              <View style={styles.durationRow}>
-                <Text style={styles.durationText}>{Math.floor((progress / 100) * durationMinutes)} min</Text>
-                <Text style={styles.durationText}>{durationMinutes} min</Text>
-              </View>
-            </TouchableOpacity>
-          )}
-          
           <VideoView
             player={player}
-            style={[styles.hiddenVideo, { pointerEvents: "none" }]}
-            contentFit="contain"
-            nativeControls={false}
+            style={styles.video}
+            allowsFullscreen
+            allowsPictureInPicture
+            nativeControls
           />
-        </View>
-
-        <View style={styles.aboutSection}>
-          <Text style={styles.aboutTitle}>About this module</Text>
-          <Text style={styles.aboutText}>
-            {getVideoDescription(params.description)}
-          </Text>
-
-          <View style={styles.progressCard}>
-            <View style={styles.progressIconContainer}>
-              <BookOpen color="#6366F1" size={24} strokeWidth={2} />
+          
+          <View style={styles.progressContainer}>
+            <View style={styles.progressBar}>
+              <View 
+                style={[
+                  styles.progressFill,
+                  { width: `${progress}%` }
+                ]}
+              />
             </View>
-            <View style={styles.progressTextContainer}>
-              <Text style={styles.progressCardTitle}>Video Progress</Text>
-              <Text style={styles.progressCardText}>
-                {isComplete
-                  ? "Great! You've completed this module. Click continue to proceed."
-                  : "Watch the complete video to mark as completed and unlock next module."}
-              </Text>
-            </View>
+            <Text style={styles.progressText}>{progress}% Complete</Text>
           </View>
         </View>
+
+        <View style={styles.infoContainer}>
+          <View style={styles.infoHeader}>
+            <BookOpen color="#6366F1" size={24} strokeWidth={2} />
+            <Text style={styles.infoTitle}>About this video</Text>
+          </View>
+          <Text style={styles.infoText}>
+            {params.description || "Watch this training video to learn more."}
+          </Text>
+        </View>
+
+        {isComplete && (
+          <View style={styles.completeCard}>
+            <Text style={styles.completeEmoji}>✅</Text>
+            <Text style={styles.completeTitle}>Video Complete!</Text>
+            <Text style={styles.completeText}>
+              You've finished watching this training module. Click below to mark it complete and continue.
+            </Text>
+          </View>
+        )}
 
         <View style={styles.bottomSpacer} />
       </ScrollView>
 
       <View style={styles.buttonContainer}>
         <PrimaryButton
-          title={isComplete ? "Continue to Next Module" : "Mark as Complete"}
+          title={isComplete ? "Mark Complete & Continue" : "Keep Watching"}
           onPress={handleContinue}
           disabled={!isComplete}
           loading={loading}
@@ -295,22 +297,46 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
+    paddingTop: Platform.OS === "ios" ? 60 : 20,
+    paddingBottom: 16,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F3F4F6",
   },
   backButton: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#F9FAFB",
     alignItems: "center",
     justifyContent: "center",
-    marginLeft: -12,
   },
-  iconButton: {
-    width: 44,
-    height: 44,
+  titleContainer: {
+    flex: 1,
+    marginHorizontal: 16,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#111827",
+    letterSpacing: -0.3,
+    textAlign: "center",
+  },
+  subtitle: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: "#6B7280",
+    marginTop: 2,
+    textAlign: "center",
+  },
+  logoutButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#F9FAFB",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -318,159 +344,94 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 20,
-  },
-  titleSection: {
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#111827",
-    marginBottom: 4,
-    letterSpacing: -0.5,
-  },
-  subtitle: {
-    fontSize: 16,
-    fontWeight: "500",
-    color: "#6B7280",
-    lineHeight: 24,
+    flexGrow: 1,
   },
   videoContainer: {
-    marginBottom: 32,
-    borderRadius: 20,
+    backgroundColor: "#000000",
+    marginHorizontal: 20,
+    marginTop: 20,
+    borderRadius: 16,
     overflow: "hidden",
-    backgroundColor: "#000000",
+    ...Shadows.md,
   },
-  videoPlaceholder: {
+  video: {
     width: "100%",
     aspectRatio: 16 / 9,
     backgroundColor: "#000000",
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
   },
-  completedVideoPlaceholder: {
-    width: "100%",
-    aspectRatio: 16 / 9,
-    backgroundColor: "#000000",
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-  },
-  playButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "rgba(99, 102, 241, 0.9)",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 16,
-  },
-  playIcon: {
-    width: 0,
-    height: 0,
-    marginLeft: 8,
-    borderLeftWidth: 24,
-    borderTopWidth: 16,
-    borderBottomWidth: 16,
-    borderLeftColor: "#FFFFFF",
-    borderTopColor: "transparent",
-    borderBottomColor: "transparent",
-  },
-  videoPlaceholderText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#9CA3AF",
-  },
-  completedVideoText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#9CA3AF",
-    marginBottom: 16,
-  },
-  spinner: {
-    marginTop: 8,
-  },
-  hiddenVideo: {
-    position: "absolute",
-    width: 0,
-    height: 0,
-    opacity: 0,
+  progressContainer: {
+    padding: 16,
+    backgroundColor: "#FFFFFF",
   },
   progressBar: {
-    position: "absolute",
-    bottom: 40,
-    left: 20,
-    right: 20,
-    height: 4,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    borderRadius: 2,
+    height: 8,
+    backgroundColor: "#E5E7EB",
+    borderRadius: 4,
+    overflow: "hidden",
+    marginBottom: 8,
   },
-  progressBarFill: {
+  progressFill: {
     height: "100%",
     backgroundColor: "#6366F1",
-    borderRadius: 2,
+    borderRadius: 4,
   },
-  durationRow: {
-    position: "absolute",
-    bottom: 16,
-    left: 20,
-    right: 20,
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  durationText: {
-    fontSize: 12,
+  progressText: {
+    fontSize: 14,
     fontWeight: "600",
-    color: "#9CA3AF",
-  },
-  aboutSection: {
-    marginBottom: 32,
-  },
-  aboutTitle: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#111827",
-    marginBottom: 16,
-  },
-  aboutText: {
-    fontSize: 16,
-    fontWeight: "400",
     color: "#6B7280",
-    lineHeight: 24,
-    marginBottom: 24,
+    textAlign: "center",
   },
-  progressCard: {
-    flexDirection: "row",
-    backgroundColor: "#EEF2FF",
+  infoContainer: {
+    backgroundColor: "#F9FAFB",
     borderRadius: 16,
     padding: 20,
+    marginHorizontal: 20,
+    marginTop: 20,
     borderWidth: 1,
-    borderColor: "#C7D2FE",
+    borderColor: "#E5E7EB",
   },
-  progressIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#FFFFFF",
+  infoHeader: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    marginRight: 16,
+    marginBottom: 12,
+    gap: 8,
   },
-  progressTextContainer: {
-    flex: 1,
-  },
-  progressCardTitle: {
+  infoTitle: {
     fontSize: 16,
     fontWeight: "700",
     color: "#111827",
-    marginBottom: 4,
   },
-  progressCardText: {
+  infoText: {
+    fontSize: 14,
+    fontWeight: "400",
+    color: "#6B7280",
+    lineHeight: 20,
+  },
+  completeCard: {
+    backgroundColor: "#ECFDF5",
+    borderRadius: 16,
+    padding: 20,
+    marginHorizontal: 20,
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: "#A7F3D0",
+    alignItems: "center",
+  },
+  completeEmoji: {
+    fontSize: 48,
+    marginBottom: 12,
+  },
+  completeTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#059669",
+    marginBottom: 8,
+  },
+  completeText: {
     fontSize: 14,
     fontWeight: "500",
-    color: "#6B7280",
+    color: "#10B981",
+    textAlign: "center",
     lineHeight: 20,
   },
   bottomSpacer: {
@@ -488,5 +449,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#F3F4F6",
     ...Shadows.md,
+    elevation: 8,
   },
 });

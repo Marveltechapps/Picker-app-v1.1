@@ -1,5 +1,5 @@
-import React from "react";
-import { View, Text, StyleSheet, StatusBar, TouchableOpacity, ScrollView, Alert, Platform } from "react-native";
+import React, { useEffect, useState } from "react";
+import { View, Text, StyleSheet, StatusBar, TouchableOpacity, ScrollView, Alert, Platform, RefreshControl, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 import { LogOut, Zap } from "lucide-react-native";
 import { useAuth, type TrainingProgress } from "@/state/authContext";
@@ -8,40 +8,7 @@ import Header from "@/components/Header";
 import TrainingVideoCard from "@/components/TrainingVideoCard";
 import PrimaryButton from "@/components/PrimaryButton";
 import ExitConfirmModal from "@/components/ExitConfirmModal";
-
-interface VideoConfig {
-  id: keyof TrainingProgress;
-  title: string;
-  duration: string;
-  description: string;
-}
-
-const VIDEOS: VideoConfig[] = [
-  {
-    id: "video1" as const,
-    title: "What is Picking?",
-    duration: "5 min",
-    description: "what is picking?",
-  },
-  {
-    id: "video2" as const,
-    title: "How to use the HSD",
-    duration: "10 min",
-    description: "how to use the hsd",
-  },
-  {
-    id: "video3" as const,
-    title: "Safety Rules",
-    duration: "8 min",
-    description: "safety rules",
-  },
-  {
-    id: "video4" as const,
-    title: "Packing Standards",
-    duration: "12 min",
-    description: "packing standards",
-  },
-];
+import { getTrainingVideos, type TrainingVideo } from "@/services/training.service";
 
 export default function TrainingVideosScreen() {
   const router = useRouter();
@@ -49,18 +16,47 @@ export default function TrainingVideosScreen() {
   const [loading, setLoading] = React.useState<boolean>(false);
   const [exitModalVisible, setExitModalVisible] = React.useState<boolean>(false);
   const [exitLoading, setExitLoading] = React.useState<boolean>(false);
+  const [videos, setVideos] = useState<TrainingVideo[]>([]);
+  const [fetchingVideos, setFetchingVideos] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
 
-  const completedCount = Object.values(trainingProgress).filter((p) => p === 100).length;
-  const allComplete = completedCount === 4;
+  // Fetch videos from backend
+  const fetchVideos = async () => {
+    try {
+      const data = await getTrainingVideos();
+      setVideos(data);
+    } catch (error) {
+      console.error('Failed to fetch training videos:', error);
+      Alert.alert('Error', 'Failed to load training videos. Please try again.');
+    } finally {
+      setFetchingVideos(false);
+    }
+  };
 
-  const handleVideoPress = (video: VideoConfig) => {
+  useEffect(() => {
+    fetchVideos();
+  }, []);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchVideos();
+    setRefreshing(false);
+  };
+
+  const completedCount = videos.filter(v => v.completed).length;
+  const allComplete = videos.length > 0 && completedCount === videos.length;
+
+  const handleVideoPress = (video: TrainingVideo) => {
     router.push({
       pathname: "/training-video" as any,
       params: {
-        videoId: video.id,
+        videoId: video.videoId,
         title: video.title,
-        duration: video.duration,
+        duration: video.durationDisplay,
         description: video.description,
+        videoUrl: video.videoUrl,
+        watchedSeconds: video.watchedSeconds.toString(),
+        lastPosition: video.lastWatchedPosition.toString(),
       },
     });
   };
@@ -108,19 +104,24 @@ export default function TrainingVideosScreen() {
           onRightPress={handleLogout}
           rightIconColor={Colors.text.secondary}
         />
-        <ScrollView 
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-
-          <View style={styles.newVideosSection}>
-            {VIDEOS.map((video) => {
-              const isCompleted = (trainingProgress[video.id] ?? 0) === 100;
-              
-              return (
+        {fetchingVideos ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Colors.primary[600]} />
+            <Text style={styles.loadingText}>Loading training videos...</Text>
+          </View>
+        ) : (
+          <ScrollView 
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+            }
+          >
+            <View style={styles.newVideosSection}>
+              {videos.map((video) => (
                 <TouchableOpacity
-                  key={video.id}
+                  key={video.videoId}
                   style={styles.simpleVideoCard}
                   onPress={() => handleVideoPress(video)}
                   activeOpacity={0.7}
@@ -128,21 +129,21 @@ export default function TrainingVideosScreen() {
                   <View style={styles.simpleCardContent}>
                     <View style={styles.simpleCardTextContainer}>
                       <Text style={styles.simpleCardTitle}>{video.title}</Text>
-                      <Text style={styles.simpleCardDuration}>{video.duration} training video</Text>
+                      <Text style={styles.simpleCardDuration}>{video.durationDisplay} training video</Text>
                     </View>
-                    {isCompleted && (
+                    {video.completed && (
                       <View style={styles.simpleCardBadge}>
                         <Text style={styles.simpleCardBadgeText}>✓</Text>
                       </View>
                     )}
                   </View>
                 </TouchableOpacity>
-              );
-            })}
-          </View>
+              ))}
+            </View>
 
-          <View style={styles.bottomSpacer} />
-        </ScrollView>
+            <View style={styles.bottomSpacer} />
+          </ScrollView>
+        )}
 
         <ExitConfirmModal
           visible={exitModalVisible}
@@ -155,6 +156,25 @@ export default function TrainingVideosScreen() {
   }
 
   // Original login flow design
+  if (fetchingVideos) {
+    return (
+      <View style={styles.container}>
+        <Header 
+          title="Training Module"
+          subtitle="Learn how to work like a Pro"
+          showBack={true}
+          rightIcon={LogOut}
+          onRightPress={handleLogout}
+          rightIconColor={Colors.text.secondary}
+        />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary[600]} />
+          <Text style={styles.loadingText}>Loading training videos...</Text>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <Header 
@@ -169,34 +189,34 @@ export default function TrainingVideosScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
       >
 
         <View style={styles.progressCard}>
           <Text style={styles.progressTitle}>Training Progress</Text>
-          <Text style={styles.progressCount}>{completedCount}/4</Text>
+          <Text style={styles.progressCount}>{completedCount}/{videos.length}</Text>
           <View style={styles.progressBarContainer}>
             <View 
               style={[
                 styles.progressBarFill,
-                { width: `${(completedCount / 4) * 100}%` }
+                { width: `${videos.length > 0 ? (completedCount / videos.length) * 100 : 0}%` }
               ]}
             />
           </View>
         </View>
 
         <View style={styles.videosSection}>
-          {VIDEOS.map((video) => {
-            const isCompleted = trainingProgress[video.id] === 100;
-            return (
-              <TrainingVideoCard
-                key={video.id}
-                title={video.title}
-                duration={video.duration}
-                completed={isCompleted}
-                onPress={() => handleVideoPress(video)}
-              />
-            );
-          })}
+          {videos.map((video) => (
+            <TrainingVideoCard
+              key={video.videoId}
+              title={video.title}
+              duration={video.durationDisplay}
+              completed={video.completed}
+              onPress={() => handleVideoPress(video)}
+            />
+          ))}
         </View>
 
         {allComplete && (
@@ -232,7 +252,7 @@ export default function TrainingVideosScreen() {
 
       <View style={styles.buttonContainer}>
         <PrimaryButton
-          title={allComplete ? "Start Final Assessment" : `Complete ${4 - completedCount} More Module${4 - completedCount === 1 ? '' : 's'}`}
+          title={allComplete ? "Start Final Assessment" : `Complete ${videos.length - completedCount} More Module${videos.length - completedCount === 1 ? '' : 's'}`}
           onPress={handleContinue}
           disabled={!allComplete}
           loading={loading}
@@ -253,6 +273,18 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.white,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: Spacing.xl,
+  },
+  loadingText: {
+    marginTop: Spacing.md,
+    fontSize: Typography.fontSize.md,
+    fontWeight: Typography.fontWeight.medium,
+    color: Colors.text.secondary,
   },
   scrollView: {
     flex: 1,
